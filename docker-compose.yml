@@ -9,7 +9,11 @@ services:
       POSTGRES_PASSWORD: dev
       POSTGRES_DB: hirevo
     ports:
-      - "5432:5432"
+      # Host port 5433 → container 5432 to avoid clash with any pre-existing
+      # local Postgres on 5432 (Odoo, EnterpriseDB installer, WSL, etc.).
+      # Services connect via DB_PORT=5433 from host. Inside compose network
+      # use hostname `postgres:5432` (unchanged).
+      - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./ops/scripts/postgres-init.sql:/docker-entrypoint-initdb.d/00-init.sql:ro
