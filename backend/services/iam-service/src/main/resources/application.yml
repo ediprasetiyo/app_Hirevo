@@ -61,11 +61,9 @@ management:
   metrics:
     tags:
       application: ${spring.application.name}
-  otlp:
-    tracing:
-      endpoint: ${OTEL_EXPORTER_OTLP_ENDPOINT:http://localhost:4318/v1/traces}
-      export:
-        enabled: ${OTEL_ENABLED:false}
+  # OTel tracing config commented out — starter jar removed from POM until
+  # incubator/SDK version alignment is fixed. Prometheus metrics still
+  # exposed via micrometer at /actuator/prometheus.
 
 logging:
   level:

@@ -71,11 +71,21 @@
       <groupId>io.micrometer</groupId>
       <artifactId>micrometer-registry-prometheus</artifactId>
     </dependency>
+    <!--
+      OpenTelemetry Spring Boot starter is intentionally omitted here — the 2.7.0
+      release ships with mismatched incubator API + SDK jars that fail startup
+      (NoClassDefFoundError: DoubleGauge). Re-introduce via the OTel BOM once
+      versions align, or run the OTel Java agent as a jar-side attach in prod.
+      Micrometer + spring-boot-actuator already exposes /actuator/prometheus.
+    -->
+    <!--
     <dependency>
       <groupId>io.opentelemetry.instrumentation</groupId>
       <artifactId>opentelemetry-spring-boot-starter</artifactId>
       <version>2.7.0</version>
     </dependency>
+    -->
+
 
     <!-- OpenAPI -->
     <dependency>
