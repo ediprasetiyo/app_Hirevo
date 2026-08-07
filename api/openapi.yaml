@@ -1,0 +1,1209 @@
+openapi: 3.1.0
+info:
+  title: Hirevo HRIS API
+  version: 1.0.0
+  description: |
+    Multi-tenant HRIS for Indonesia. Enterprise-grade authentication (MFA + WebAuthn),
+    payroll with PPh 21 TER + BPJS auto-calc, attendance with face recognition + anti-fraud,
+    reimbursement with OCR + duplicate detection, and full audit trail.
+
+    ## Tenant resolution
+    All API calls (except public signup + careers) require tenant context, resolved via:
+    - **Subdomain**: `acme.hirevo.id` → gateway injects `X-Tenant-ID: <uuid>`.
+    - **Mobile/direct**: pass `X-Tenant-Subdomain: acme` header explicitly.
+
+    ## Auth
+    Bearer JWT (RS256 in prod, HS256 in dev). Access token 15 min, rotating refresh 7 days.
+    MFA required for admin roles: enforced by tenant policy.
+
+    ## Errors
+    RFC 7807 `application/problem+json`. See `Problem` schema.
+
+    ## Rate limiting
+    Per IP + per tenant + per user. Response headers: `X-RateLimit-{Limit,Remaining,Reset}`.
+  contact:
+    name: Hirevo API team
+    email: api@hirevo.id
+    url: https://hirevo.id/developers
+  license:
+    name: Proprietary
+
+servers:
+  - url: https://api.hirevo.id/v1
+    description: Production
+  - url: https://api.staging.hirevo.id/v1
+    description: Staging
+  - url: http://localhost:8080/v1
+    description: Local (via api-gateway)
+
+tags:
+  - {name: Authentication, description: Login, MFA, refresh, logout}
+  - {name: MFA, description: TOTP enrollment, WebAuthn registration}
+  - {name: Devices, description: Trusted device management}
+  - {name: Tenants, description: Tenant signup + workspace}
+  - {name: Users & RBAC, description: User invites, roles, permissions}
+  - {name: Employees, description: Employee CRUD + contracts + documents}
+  - {name: Org Structure, description: Companies, branches, departments, positions}
+  - {name: Attendance, description: Clock-in/out, geofence, face, overtime}
+  - {name: Leave, description: Requests, balances, calendar, types}
+  - {name: Payroll, description: Runs, payslips, bank files}
+  - {name: Tax (PPh 21), description: TER + annual + bukti potong}
+  - {name: BPJS, description: 5-program calc + exports}
+  - {name: Reimbursement, description: Requests, OCR, fraud detection, cash advance}
+  - {name: Loan, description: Employee loans with auto-deduct}
+  - {name: Workflow, description: Approval configuration + inbox}
+  - {name: Notifications}
+  - {name: Documents, description: File upload with signed URLs}
+  - {name: AI, description: Chatbot, OCR, fraud scoring}
+  - {name: Reports}
+  - {name: Audit}
+  - {name: Webhooks}
+
+security:
+  - bearerAuth: []
+
+# --------------------------------------------------------------------------------
+# PATHS  (~90 primary endpoints. Common CRUD collapsed to representative examples.)
+# --------------------------------------------------------------------------------
+paths:
+
+  # ============ AUTH ============
+  /auth/login:
+    post:
+      tags: [Authentication]
+      summary: Password login (with optional MFA challenge)
+      operationId: login
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/TenantSubdomain'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/LoginRequest'}
+      responses:
+        '200':
+          description: Login success (no MFA required)
+          content: {application/json: {schema: {$ref: '#/components/schemas/LoginResponse'}}}
+        '202':
+          description: MFA challenge required
+          content: {application/json: {schema: {$ref: '#/components/schemas/MfaChallengeResponse'}}}
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '423':
+          description: Account locked (too many failed attempts)
+          content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}
+
+  /auth/mfa/verify:
+    post:
+      tags: [Authentication, MFA]
+      summary: Complete MFA challenge with TOTP code or WebAuthn assertion
+      operationId: verifyMfa
+      security: []
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/MfaVerifyRequest'}}}
+      responses:
+        '200': {description: Tokens issued, content: {application/json: {schema: {$ref: '#/components/schemas/LoginResponse'}}}}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+
+  /auth/refresh:
+    post:
+      tags: [Authentication]
+      summary: Rotate refresh token — presenting an already-used token invalidates chain
+      operationId: refreshToken
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [refreshToken]
+              properties: {refreshToken: {type: string}}
+      responses:
+        '200': {description: New token pair, content: {application/json: {schema: {$ref: '#/components/schemas/LoginResponse'}}}}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+
+  /auth/logout:
+    post:
+      tags: [Authentication]
+      summary: Revoke refresh token & blacklist current jti
+      operationId: logout
+      requestBody:
+        required: true
+        content: {application/json: {schema: {type: object, properties: {refreshToken: {type: string}}}}}
+      responses: {'204': {description: Logged out}}
+
+  /auth/password/reset/request:
+    post:
+      tags: [Authentication]
+      summary: Send password-reset email
+      security: []
+      parameters: [{$ref: '#/components/parameters/TenantSubdomain'}]
+      requestBody: {required: true, content: {application/json: {schema: {type: object, required: [email], properties: {email: {type: string, format: email}}}}}}
+      responses: {'204': {description: Reset email sent if account exists}}
+
+  /auth/password/reset/confirm:
+    post:
+      tags: [Authentication]
+      summary: Complete password reset with token
+      security: []
+      requestBody: {required: true, content: {application/json: {schema: {type: object, required: [token, newPassword], properties: {token: {type: string}, newPassword: {type: string, minLength: 8}}}}}}
+      responses: {'204': {description: Password updated}}
+
+  # ============ MFA ENROLL ============
+  /mfa/enroll/totp/begin:
+    post:
+      tags: [MFA]
+      summary: Generate TOTP secret + otpauth URI
+      operationId: beginTotpEnroll
+      parameters: [{name: email, in: query, required: true, schema: {type: string, format: email}}]
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  method_id: {type: string, format: uuid}
+                  secret_base32: {type: string, description: One-time — for QR display}
+                  otpauth_uri: {type: string, format: uri}
+
+  /mfa/enroll/totp/confirm:
+    post:
+      tags: [MFA]
+      summary: Verify first TOTP code + activate 2FA
+      operationId: confirmTotpEnroll
+      requestBody: {required: true, content: {application/json: {schema: {type: object, required: [methodId, code], properties: {methodId: {type: string, format: uuid}, code: {type: string, pattern: '^\d{6}$'}}}}}}
+      responses: {'200': {description: Enrolled}}
+
+  /mfa/enroll/webauthn/begin:
+    post:
+      tags: [MFA]
+      summary: Start WebAuthn (FIDO2) registration; returns credential creation options
+      responses:
+        '200':
+          content: {application/json: {schema: {$ref: '#/components/schemas/WebAuthnRegistrationOptions'}}}
+
+  /mfa/enroll/webauthn/finish:
+    post:
+      tags: [MFA]
+      summary: Complete WebAuthn registration; stores public credential
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/WebAuthnAttestation'}}}}
+      responses: {'200': {description: WebAuthn method active}}
+
+  /mfa/recovery-codes/regenerate:
+    post:
+      tags: [MFA]
+      summary: Generate 10 fresh recovery codes (invalidates any prior)
+      responses: {'200': {content: {application/json: {schema: {type: object, properties: {codes: {type: array, items: {type: string}}}}}}}}
+
+  # ============ DEVICES ============
+  /devices:
+    get:
+      tags: [Devices]
+      summary: List current user's trusted devices
+      responses: {'200': {content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/TrustedDevice'}}}}}}
+
+  /devices/{id}:
+    delete:
+      tags: [Devices]
+      summary: Revoke a trusted device — invalidates its refresh tokens
+      parameters: [{name: id, in: path, required: true, schema: {type: string, format: uuid}}]
+      responses: {'204': {description: Revoked}}
+
+  # ============ TENANTS ============
+  /tenants/signup:
+    post:
+      tags: [Tenants]
+      summary: Self-service tenant signup — creates tenant + super_admin user
+      operationId: signupTenant
+      security: []
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/TenantSignupRequest'}}}}
+      responses:
+        '201':
+          content: {application/json: {schema: {$ref: '#/components/schemas/TenantSignupResponse'}}}
+        '409':
+          description: Subdomain already taken
+          content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}
+
+  /me:
+    get:
+      tags: [Tenants]
+      summary: Current authenticated principal + tenant summary
+      operationId: me
+      responses: {'200': {content: {application/json: {schema: {$ref: '#/components/schemas/Me'}}}}}
+
+  /tenants/{id}:
+    patch:
+      tags: [Tenants]
+      summary: Update tenant settings (branding, custom domain, locale)
+      parameters: [{name: id, in: path, required: true, schema: {type: string, format: uuid}}]
+      requestBody: {content: {application/json: {schema: {$ref: '#/components/schemas/TenantUpdate'}}}}
+      responses: {'200': {content: {application/json: {schema: {$ref: '#/components/schemas/Tenant'}}}}}
+
+  # ============ USERS / RBAC ============
+  /users:
+    get: {tags: [Users & RBAC], summary: List users, parameters: [{$ref: '#/components/parameters/Cursor'}, {$ref: '#/components/parameters/Limit'}], responses: {'200': {content: {application/json: {schema: {$ref: '#/components/schemas/UserPage'}}}}}}
+    post: {tags: [Users & RBAC], summary: Invite user, requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/InviteUserRequest'}}}}, responses: {'201': {description: Invited}}}
+
+  /roles: {get: {tags: [Users & RBAC], responses: {'200': {description: OK}}}, post: {tags: [Users & RBAC], responses: {'201': {description: Created}}}}
+  /permissions: {get: {tags: [Users & RBAC], summary: List global permission catalog, responses: {'200': {description: OK}}}}
+
+  # ============ EMPLOYEES ============
+  /employees:
+    get:
+      tags: [Employees]
+      summary: List employees (fuzzy search by name via ?search=)
+      parameters:
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
+        - {name: 'filter[status]', in: query, schema: {type: string, enum: [active, probation, resigned, terminated, retired]}}
+        - {name: 'filter[branch_id]', in: query, schema: {type: string, format: uuid}}
+        - {name: 'filter[department_id]', in: query, schema: {type: string, format: uuid}}
+        - {name: search, in: query, schema: {type: string}}
+      responses: {'200': {content: {application/json: {schema: {$ref: '#/components/schemas/EmployeePage'}}}}}
+    post:
+      tags: [Employees]
+      summary: Create employee with initial contract, tax profile, BPJS profile
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/CreateEmployeeRequest'}}}}
+      responses: {'201': {content: {application/json: {schema: {$ref: '#/components/schemas/Employee'}}}}}
+
+  /employees/{id}:
+    get: {tags: [Employees], parameters: [{name: id, in: path, required: true, schema: {type: string, format: uuid}}], responses: {'200': {content: {application/json: {schema: {$ref: '#/components/schemas/Employee'}}}}}}
+    patch: {tags: [Employees], parameters: [{name: id, in: path, required: true, schema: {type: string, format: uuid}}], requestBody: {content: {application/json: {schema: {$ref: '#/components/schemas/UpdateEmployeeRequest'}}}}, responses: {'200': {description: OK}}}
+    delete: {tags: [Employees], parameters: [{name: id, in: path, required: true, schema: {type: string, format: uuid}}], responses: {'204': {description: Soft-deleted}}}
+
+  /employees/{id}/resign:
+    post:
+      tags: [Employees]
+      parameters: [{name: id, in: path, required: true, schema: {type: string, format: uuid}}]
+      requestBody: {required: true, content: {application/json: {schema: {type: object, required: [resignDate, reason], properties: {resignDate: {type: string, format: date}, reason: {type: string}, exitChecklist: {type: array, items: {type: string}}}}}}}
+      responses: {'200': {description: Resign flow initiated}}
+
+  /employees/bulk-import:
+    post:
+      tags: [Employees]
+      summary: Async bulk import via Excel
+      requestBody: {required: true, content: {multipart/form-data: {schema: {type: object, properties: {file: {type: string, format: binary}}}}}}
+      responses: {'202': {description: Job accepted, content: {application/json: {schema: {type: object, properties: {job_id: {type: string, format: uuid}}}}}}}
+
+  /orgchart:
+    get:
+      tags: [Org Structure]
+      summary: Full company org chart as nested tree
+      responses: {'200': {content: {application/json: {schema: {$ref: '#/components/schemas/OrgNode'}}}}}
+
+  # ============ ATTENDANCE ============
+  /attendance/face-enrollments:
+    post:
+      tags: [Attendance]
+      summary: Enroll employee face (3 angles) — stores encrypted embedding
+      requestBody: {required: true, content: {multipart/form-data: {schema: {type: object, properties: {employee_id: {type: string, format: uuid}, front: {type: string, format: binary}, left: {type: string, format: binary}, right: {type: string, format: binary}}}}}}
+      responses: {'201': {description: Enrolled, content: {application/json: {schema: {type: object, properties: {enrollment_id: {type: string, format: uuid}, quality_score: {type: number}}}}}}}
+
+  /attendance/clock-in:
+    post:
+      tags: [Attendance]
+      summary: Mobile clock-in with GPS + face + liveness + anti-fraud checks
+      operationId: clockIn
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/ClockInRequest'}
+      responses:
+        '201':
+          description: Attendance recorded
+          content: {application/json: {schema: {$ref: '#/components/schemas/AttendanceLog'}}}
+        '422':
+          description: Rejected (face mismatch, geofence, mock GPS, liveness fail, etc.)
+          content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}
+
+  /attendance/clock-out:
+    post:
+      tags: [Attendance]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/ClockOutRequest'}}}}
+      responses: {'200': {description: Recorded}}
+
+  /attendance/logs:
+    get:
+      tags: [Attendance]
+      summary: Query attendance logs
+      parameters:
+        - {name: 'filter[employee_id]', in: query, schema: {type: string, format: uuid}}
+        - {name: 'filter[date_from]', in: query, schema: {type: string, format: date}}
+        - {name: 'filter[date_to]', in: query, schema: {type: string, format: date}}
+        - {name: 'filter[fraud_score][gte]', in: query, schema: {type: integer, minimum: 0, maximum: 100}}
+      responses: {'200': {content: {application/json: {schema: {$ref: '#/components/schemas/AttendanceLogPage'}}}}}
+
+  /attendance/anomalies:
+    get:
+      tags: [Attendance]
+      summary: List attendance flagged for HR review
+      responses: {'200': {description: OK}}
+
+  /attendance/anomalies/{id}/decide:
+    post:
+      tags: [Attendance]
+      parameters: [{name: id, in: path, required: true, schema: {type: string, format: uuid}}]
+      requestBody: {required: true, content: {application/json: {schema: {type: object, required: [decision], properties: {decision: {type: string, enum: [approve, reject]}, comment: {type: string}}}}}}
+      responses: {'200': {description: Decided}}
+
+  /work-locations: {get: {tags: [Attendance], responses: {'200': {description: OK}}}, post: {tags: [Attendance], responses: {'201': {description: Created}}}}
+  /shifts: {get: {tags: [Attendance], responses: {'200': {description: OK}}}, post: {tags: [Attendance], responses: {'201': {description: Created}}}}
+  /shift-assignments/bulk: {post: {tags: [Attendance], summary: Bulk assign shifts to employees for date range, responses: {'202': {description: Job accepted}}}}
+  /overtime-requests: {get: {tags: [Attendance], responses: {'200': {description: OK}}}, post: {tags: [Attendance], responses: {'201': {description: Submitted}}}}
+
+  # ============ LEAVE ============
+  /leave-types: {get: {tags: [Leave], responses: {'200': {description: OK}}}, post: {tags: [Leave], responses: {'201': {description: Created}}}}
+  /leave-balances:
+    get:
+      tags: [Leave]
+      parameters:
+        - {name: employee_id, in: query, required: true, schema: {type: string, format: uuid}}
+        - {name: year, in: query, required: true, schema: {type: integer}}
+      responses: {'200': {content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/LeaveBalance'}}}}}}
+
+  /leave-requests:
+    get: {tags: [Leave], responses: {'200': {description: OK}}}
+    post:
+      tags: [Leave]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/CreateLeaveRequest'}}}}
+      responses: {'201': {content: {application/json: {schema: {$ref: '#/components/schemas/LeaveRequest'}}}}}
+
+  /leave-requests/{id}/approve:
+    post:
+      tags: [Leave]
+      parameters: [{name: id, in: path, required: true, schema: {type: string, format: uuid}}]
+      requestBody: {content: {application/json: {schema: {type: object, properties: {comment: {type: string}}}}}}
+      responses: {'200': {description: Approved (or moved to next workflow step)}}
+
+  /leave-calendar:
+    get:
+      tags: [Leave]
+      parameters:
+        - {name: team_id, in: query, schema: {type: string, format: uuid}}
+        - {name: month, in: query, required: true, schema: {type: string, pattern: '^\d{4}-\d{2}$'}}
+      responses: {'200': {description: OK}}
+
+  # ============ PAYROLL ============
+  /payroll/components: {get: {tags: [Payroll], responses: {'200': {description: OK}}}, post: {tags: [Payroll], responses: {'201': {description: Created}}}}
+  /payroll/periods: {get: {tags: [Payroll], responses: {'200': {description: OK}}}, post: {tags: [Payroll], responses: {'201': {description: Created}}}}
+
+  /payroll/runs:
+    post:
+      tags: [Payroll]
+      summary: Create a new payroll run (initial status 'draft')
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/CreatePayrollRunRequest'}}}}
+      responses: {'202': {content: {application/json: {schema: {$ref: '#/components/schemas/PayrollRun'}}}}}
+
+  /payroll/runs/{id}:
+    get:
+      tags: [Payroll]
+      parameters: [{name: id, in: path, required: true, schema: {type: string, format: uuid}}]
+      responses: {'200': {content: {application/json: {schema: {$ref: '#/components/schemas/PayrollRun'}}}}}
+
+  /payroll/runs/{id}/calculate:
+    post:
+      tags: [Payroll]
+      summary: Trigger async calculation
+      parameters: [{name: id, in: path, required: true, schema: {type: string, format: uuid}}]
+      responses: {'202': {description: Calculation queued}}
+
+  /payroll/runs/{id}/approve:
+    post:
+      tags: [Payroll]
+      summary: Approve (requires Idempotency-Key + user != reviewer for 4-eyes)
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+        - {name: Idempotency-Key, in: header, required: true, schema: {type: string, format: uuid}}
+      responses:
+        '200': {content: {application/json: {schema: {$ref: '#/components/schemas/PayrollRun'}}}}
+        '422':
+          description: 4-eyes violation (reviewer == approver)
+          content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}
+
+  /payroll/runs/{id}/reopen:
+    post:
+      tags: [Payroll]
+      summary: Super-admin only — reopen closed period (audit-trailed)
+      parameters: [{name: id, in: path, required: true, schema: {type: string, format: uuid}}]
+      requestBody: {required: true, content: {application/json: {schema: {type: object, required: [reason], properties: {reason: {type: string}}}}}}
+      responses: {'200': {description: Reopened}}
+
+  /payroll/runs/{id}/bank-files:
+    post:
+      tags: [Payroll]
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+        - {name: bank, in: query, required: true, schema: {type: string, enum: [BCA, BMRI, BRI, BNI, CIMB, BSI]}}
+      responses: {'201': {description: Bank file generated, content: {application/json: {schema: {$ref: '#/components/schemas/BankPaymentFile'}}}}}
+
+  /payroll/payslips/{id}: {get: {tags: [Payroll], parameters: [{name: id, in: path, required: true, schema: {type: string, format: uuid}}], responses: {'200': {content: {application/json: {schema: {$ref: '#/components/schemas/Payslip'}}}}}}}
+  /payroll/payslips/{id}/pdf: {get: {tags: [Payroll], summary: Returns signed URL (5min TTL), parameters: [{name: id, in: path, required: true, schema: {type: string, format: uuid}}], responses: {'200': {description: OK}}}}
+
+  # ============ TAX ============
+  /tax/profiles/{employeeId}: {get: {tags: [Tax (PPh 21)], parameters: [{name: employeeId, in: path, required: true, schema: {type: string, format: uuid}}], responses: {'200': {description: OK}}}, patch: {tags: [Tax (PPh 21)], parameters: [{name: employeeId, in: path, required: true, schema: {type: string, format: uuid}}], responses: {'200': {description: OK}}}}
+  /tax/calculations: {get: {tags: [Tax (PPh 21)], parameters: [{name: employee_id, in: query, schema: {type: string, format: uuid}}, {name: year, in: query, schema: {type: integer}}], responses: {'200': {description: OK}}}}
+  /tax/bukti-potong/generate:
+    post:
+      tags: [Tax (PPh 21)]
+      summary: Generate annual bukti potong 1721-A1
+      requestBody: {required: true, content: {application/json: {schema: {type: object, required: [tax_year, company_id], properties: {tax_year: {type: integer}, company_id: {type: string, format: uuid}, scope: {type: string, enum: [all, department, individual]}}}}}}
+      responses: {'202': {description: Job queued}}
+  /tax/bukti-potong/{id}/pdf: {get: {tags: [Tax (PPh 21)], parameters: [{name: id, in: path, required: true, schema: {type: string, format: uuid}}], responses: {'200': {description: PDF signed URL}}}}
+  /tax/bukti-potong/{id}/ebupot-xml: {get: {tags: [Tax (PPh 21)], parameters: [{name: id, in: path, required: true, schema: {type: string, format: uuid}}], responses: {'200': {description: e-Bupot XML}}}}
+
+  # ============ BPJS ============
+  /bpjs/profiles/{employeeId}: {get: {tags: [BPJS], parameters: [{name: employeeId, in: path, required: true, schema: {type: string, format: uuid}}], responses: {'200': {description: OK}}}, patch: {tags: [BPJS], parameters: [{name: employeeId, in: path, required: true, schema: {type: string, format: uuid}}], responses: {'200': {description: OK}}}}
+  /bpjs/exports:
+    post:
+      tags: [BPJS]
+      requestBody: {required: true, content: {application/json: {schema: {type: object, required: [payroll_run_id, type], properties: {payroll_run_id: {type: string, format: uuid}, type: {type: string, enum: [sipp, edabu]}}}}}}
+      responses: {'201': {description: Export file created}}
+
+  # ============ REIMBURSEMENT ============
+  /reimbursement/categories: {get: {tags: [Reimbursement], responses: {'200': {description: OK}}}, post: {tags: [Reimbursement], responses: {'201': {description: OK}}}}
+  /reimbursement/requests:
+    get: {tags: [Reimbursement], responses: {'200': {description: OK}}}
+    post:
+      tags: [Reimbursement]
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/CreateReimbursementRequest'}}}}
+      responses: {'201': {content: {application/json: {schema: {$ref: '#/components/schemas/ReimbursementRequest'}}}}}
+
+  /reimbursement/ocr/jobs:
+    post:
+      tags: [Reimbursement, AI]
+      summary: Upload receipt photo → returns extracted vendor/date/total/items
+      requestBody: {required: true, content: {multipart/form-data: {schema: {type: object, properties: {image: {type: string, format: binary}}}}}}
+      responses: {'202': {content: {application/json: {schema: {$ref: '#/components/schemas/OcrJob'}}}}}
+  /reimbursement/ocr/jobs/{id}: {get: {tags: [Reimbursement, AI], parameters: [{name: id, in: path, required: true, schema: {type: string, format: uuid}}], responses: {'200': {content: {application/json: {schema: {$ref: '#/components/schemas/OcrJob'}}}}}}}
+
+  /reimbursement/cash-advances: {get: {tags: [Reimbursement], responses: {'200': {description: OK}}}, post: {tags: [Reimbursement], responses: {'201': {description: OK}}}}
+
+  # ============ LOAN ============
+  /loan/types: {get: {tags: [Loan], responses: {'200': {description: OK}}}}
+  /loan/eligibility:
+    get:
+      tags: [Loan]
+      summary: Preview eligibility + schedule for proposed loan
+      parameters:
+        - {name: employee_id, in: query, required: true, schema: {type: string, format: uuid}}
+        - {name: amount, in: query, required: true, schema: {type: number}}
+        - {name: tenor_months, in: query, required: true, schema: {type: integer}}
+      responses: {'200': {content: {application/json: {schema: {$ref: '#/components/schemas/LoanEligibility'}}}}}
+  /loan/loans:
+    get: {tags: [Loan], responses: {'200': {description: OK}}}
+    post: {tags: [Loan], requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/CreateLoanRequest'}}}}, responses: {'201': {content: {application/json: {schema: {$ref: '#/components/schemas/Loan'}}}}}}
+  /loan/loans/{id}/schedule: {get: {tags: [Loan], parameters: [{name: id, in: path, required: true, schema: {type: string, format: uuid}}], responses: {'200': {description: OK}}}}
+  /loan/loans/{id}/early-settle: {post: {tags: [Loan], parameters: [{name: id, in: path, required: true, schema: {type: string, format: uuid}}], responses: {'200': {description: Settled}}}}
+
+  # ============ WORKFLOW ============
+  /workflows: {get: {tags: [Workflow], responses: {'200': {description: OK}}}, post: {tags: [Workflow], responses: {'201': {description: Created}}}}
+  /approval-inbox: {get: {tags: [Workflow], summary: Current user's pending approvals across all modules, responses: {'200': {content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/ApprovalInboxItem'}}}}}}}}
+  /workflows/instances/{id}/act:
+    post:
+      tags: [Workflow]
+      parameters: [{name: id, in: path, required: true, schema: {type: string, format: uuid}}]
+      requestBody: {required: true, content: {application/json: {schema: {type: object, required: [action], properties: {action: {type: string, enum: [approve, reject, delegate]}, comment: {type: string}, delegate_to_user_id: {type: string, format: uuid}}}}}}
+      responses: {'200': {description: Action applied}}
+
+  # ============ NOTIFICATIONS ============
+  /notifications: {get: {tags: [Notifications], responses: {'200': {description: OK}}}}
+  /notifications/{id}/read: {post: {tags: [Notifications], parameters: [{name: id, in: path, required: true, schema: {type: string, format: uuid}}], responses: {'204': {description: Marked read}}}}
+  /notifications/devices/register:
+    post:
+      tags: [Notifications]
+      summary: Register FCM push token
+      requestBody: {required: true, content: {application/json: {schema: {type: object, required: [push_token, platform], properties: {push_token: {type: string}, platform: {type: string, enum: [android, ios]}}}}}}
+      responses: {'201': {description: Registered}}
+
+  # ============ DOCUMENTS ============
+  /documents/upload-url:
+    post:
+      tags: [Documents]
+      summary: Request presigned S3 upload URL
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/UploadUrlRequest'}}}}
+      responses: {'200': {content: {application/json: {schema: {$ref: '#/components/schemas/UploadUrl'}}}}}
+  /documents/{id}/download:
+    get:
+      tags: [Documents]
+      summary: Returns signed URL (5min TTL)
+      parameters: [{name: id, in: path, required: true, schema: {type: string, format: uuid}}]
+      responses: {'200': {content: {application/json: {schema: {type: object, properties: {url: {type: string, format: uri}, expires_at: {type: string, format: date-time}}}}}}}
+
+  # ============ AI ============
+  /ai/chat/sessions:
+    post: {tags: [AI], requestBody: {required: true, content: {application/json: {schema: {type: object, properties: {context_type: {type: string, enum: [hr_chatbot, payroll_assistant]}, title: {type: string}}}}}}, responses: {'201': {description: Created}}}
+  /ai/chat/sessions/{id}/messages:
+    post:
+      tags: [AI]
+      summary: Send message; response streams via SSE
+      parameters: [{name: id, in: path, required: true, schema: {type: string, format: uuid}}]
+      requestBody: {required: true, content: {application/json: {schema: {type: object, required: [content], properties: {content: {type: string}}}}}}
+      responses:
+        '200':
+          description: SSE stream of deltas + citations
+          content: {text/event-stream: {schema: {type: string}}}
+
+  /ai/ocr/extract:
+    post:
+      tags: [AI]
+      summary: Extract structured fields from ID document (KTP/NPWP/ijazah/receipt)
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                image: {type: string, format: binary}
+                document_type: {type: string, enum: [ktp, npwp, receipt, ijazah, kk]}
+      responses: {'200': {content: {application/json: {schema: {$ref: '#/components/schemas/OcrResult'}}}}}
+
+  # ============ REPORTS ============
+  /reports/dashboard/hr:
+    get:
+      tags: [Reports]
+      parameters:
+        - {name: period, in: query, schema: {type: string, pattern: '^\d{4}-\d{2}$'}}
+        - {name: branch_id, in: query, schema: {type: string, format: uuid}}
+      responses: {'200': {content: {application/json: {schema: {$ref: '#/components/schemas/HrDashboard'}}}}}
+
+  # ============ AUDIT ============
+  /audit/logs:
+    get:
+      tags: [Audit]
+      parameters:
+        - {name: 'filter[entity_type]', in: query, schema: {type: string}}
+        - {name: 'filter[entity_id]', in: query, schema: {type: string}}
+        - {name: 'filter[user_id]', in: query, schema: {type: string, format: uuid}}
+        - {name: 'filter[action]', in: query, schema: {type: string}}
+        - {name: 'filter[from]', in: query, schema: {type: string, format: date-time}}
+        - {name: 'filter[to]', in: query, schema: {type: string, format: date-time}}
+      responses: {'200': {description: OK}}
+
+  # ============ WEBHOOKS ============
+  /webhooks/subscriptions:
+    get: {tags: [Webhooks], responses: {'200': {description: OK}}}
+    post:
+      tags: [Webhooks]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [target_url, event_types]
+              properties:
+                name: {type: string}
+                target_url: {type: string, format: uri}
+                event_types:
+                  type: array
+                  items:
+                    type: string
+                    enum:
+                      - employee.created
+                      - employee.updated
+                      - employee.resigned
+                      - attendance.clocked_in
+                      - attendance.anomaly_detected
+                      - leave.requested
+                      - leave.approved
+                      - payroll.run_approved
+                      - payroll.disbursed
+                      - reimbursement.submitted
+                      - reimbursement.approved
+                      - recruitment.candidate_hired
+      responses: {'201': {description: Subscription created, content: {application/json: {schema: {type: object, properties: {id: {type: string, format: uuid}, secret: {type: string, description: HMAC signing key — shown once}}}}}}}
+
+# --------------------------------------------------------------------------------
+# COMPONENTS
+# --------------------------------------------------------------------------------
+components:
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    TenantSubdomain:
+      name: X-Tenant-Subdomain
+      in: header
+      required: true
+      description: Tenant subdomain (e.g. "acme")
+      schema: {type: string, minLength: 3, maxLength: 63}
+    Cursor:
+      name: cursor
+      in: query
+      description: Opaque cursor from previous response's pagination.next_cursor
+      schema: {type: string}
+    Limit:
+      name: limit
+      in: query
+      schema: {type: integer, default: 20, minimum: 1, maximum: 100}
+
+  responses:
+    Unauthorized:
+      description: Missing or invalid token
+      content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}
+    Forbidden:
+      description: Authenticated but lacks permission
+      content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}
+    NotFound:
+      description: Resource not found
+      content: {application/problem+json: {schema: {$ref: '#/components/schemas/Problem'}}}
+
+  schemas:
+
+    # --- Common ---
+    Problem:
+      type: object
+      description: RFC 7807 problem+json
+      properties:
+        type: {type: string, format: uri}
+        title: {type: string}
+        status: {type: integer}
+        detail: {type: string}
+        instance: {type: string}
+        trace_id: {type: string, format: uuid}
+        code: {type: string, description: Machine-readable error code (e.g. attendance.face_mismatch)}
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field: {type: string}
+              code: {type: string}
+              message: {type: string}
+
+    Pagination:
+      type: object
+      properties:
+        next_cursor: {type: string, nullable: true}
+        prev_cursor: {type: string, nullable: true}
+        has_more: {type: boolean}
+        total: {type: integer, nullable: true}
+
+    # --- Auth ---
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: {type: string, format: email}
+        password: {type: string, minLength: 8}
+        deviceId: {type: string, format: uuid, nullable: true}
+        deviceName: {type: string, nullable: true, example: 'Edi iPhone 15'}
+        deviceFingerprint: {type: string, nullable: true}
+
+    LoginResponse:
+      type: object
+      properties:
+        accessToken: {type: string}
+        refreshToken: {type: string}
+        expiresIn: {type: integer, description: seconds until access token expires}
+        accessExpiresAt: {type: string, format: date-time}
+        tokenType: {type: string, example: Bearer}
+        user:
+          type: object
+          properties:
+            id: {type: string, format: uuid}
+            email: {type: string, format: email}
+            fullName: {type: string}
+            roles: {type: array, items: {type: string}}
+
+    MfaChallengeResponse:
+      type: object
+      properties:
+        mfaRequired: {type: boolean, example: true}
+        challengeId: {type: string, format: uuid}
+        availableMfaMethods:
+          type: array
+          items:
+            type: object
+            properties:
+              id: {type: string, format: uuid}
+              type: {type: string, enum: [totp, webauthn, sms]}
+              displayName: {type: string}
+
+    MfaVerifyRequest:
+      type: object
+      required: [challengeId, code]
+      properties:
+        challengeId: {type: string, format: uuid}
+        methodId: {type: string, format: uuid, nullable: true}
+        code: {type: string, description: 6-digit TOTP or WebAuthn assertion JSON string}
+
+    WebAuthnRegistrationOptions:
+      type: object
+      description: PublicKeyCredentialCreationOptions per WebAuthn L2 spec
+      additionalProperties: true
+
+    WebAuthnAttestation:
+      type: object
+      description: PublicKeyCredential response from browser
+      additionalProperties: true
+
+    TrustedDevice:
+      type: object
+      properties:
+        id: {type: string, format: uuid}
+        deviceName: {type: string}
+        platform: {type: string, enum: [android, ios, web, desktop]}
+        lastIp: {type: string}
+        lastGeoCity: {type: string}
+        lastActiveAt: {type: string, format: date-time}
+        trustLevel: {type: string, enum: [trusted, new, suspicious]}
+        enrolledAt: {type: string, format: date-time}
+
+    # --- Tenant ---
+    TenantSignupRequest:
+      type: object
+      required: [companyName, subdomain, adminEmail, adminPassword, adminFullName]
+      properties:
+        companyName: {type: string, minLength: 2, maxLength: 200}
+        subdomain: {type: string, pattern: '^[a-z0-9](?:[a-z0-9-]{1,61}[a-z0-9])?$'}
+        adminEmail: {type: string, format: email}
+        adminPassword: {type: string, minLength: 8}
+        adminFullName: {type: string}
+
+    TenantSignupResponse:
+      type: object
+      properties:
+        tenantId: {type: string, format: uuid}
+        subdomain: {type: string}
+        adminUserId: {type: string, format: uuid}
+        tenantUrl: {type: string, format: uri}
+
+    Tenant:
+      type: object
+      properties:
+        id: {type: string, format: uuid}
+        name: {type: string}
+        subdomain: {type: string}
+        customDomain: {type: string, nullable: true}
+        plan: {type: string, enum: [free, starter, growth, pro, enterprise]}
+        status: {type: string, enum: [trial, active, suspended, churned]}
+        trialEndsAt: {type: string, format: date, nullable: true}
+
+    TenantUpdate:
+      type: object
+      properties:
+        name: {type: string}
+        logoUrl: {type: string, format: uri}
+        customDomain: {type: string}
+
+    Me:
+      type: object
+      properties:
+        user_id: {type: string, format: uuid}
+        tenant_id: {type: string, format: uuid}
+        roles: {type: array, items: {type: string}}
+        permissions: {type: array, items: {type: string}}
+
+    InviteUserRequest:
+      type: object
+      required: [email, roles]
+      properties:
+        email: {type: string, format: email}
+        fullName: {type: string}
+        roles: {type: array, items: {type: string}}
+
+    UserPage:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+            properties:
+              id: {type: string, format: uuid}
+              email: {type: string}
+              fullName: {type: string}
+              status: {type: string}
+              roles: {type: array, items: {type: string}}
+        pagination: {$ref: '#/components/schemas/Pagination'}
+
+    # --- Employee ---
+    Employee:
+      type: object
+      properties:
+        id: {type: string, format: uuid}
+        employeeNo: {type: string}
+        fullName: {type: string}
+        nikMasked: {type: string, example: '32**********'}
+        npwpMasked: {type: string, example: '12.***.***.9-***.***'}
+        dateOfBirth: {type: string, format: date}
+        gender: {type: string, enum: [male, female]}
+        maritalStatus: {type: string, enum: [single, married, divorced, widowed]}
+        hireDate: {type: string, format: date}
+        status: {type: string, enum: [active, probation, resigned, terminated, retired]}
+        managerId: {type: string, format: uuid, nullable: true}
+        activeContract: {$ref: '#/components/schemas/EmploymentContract'}
+
+    CreateEmployeeRequest:
+      type: object
+      required: [employeeNo, fullName, hireDate, contract]
+      properties:
+        employeeNo: {type: string}
+        fullName: {type: string}
+        nik: {type: string, description: Encrypted before storage}
+        npwp: {type: string, description: Encrypted before storage}
+        dateOfBirth: {type: string, format: date}
+        gender: {type: string, enum: [male, female]}
+        maritalStatus: {type: string, enum: [single, married, divorced, widowed]}
+        personalEmail: {type: string, format: email}
+        phone: {type: string}
+        hireDate: {type: string, format: date}
+        contract:
+          type: object
+          required: [contractType, startDate, positionId, baseSalary]
+          properties:
+            contractType: {type: string, enum: [pkwt, pkwtt, magang, harian_lepas, outsource, part_time]}
+            startDate: {type: string, format: date}
+            endDate: {type: string, format: date}
+            positionId: {type: string, format: uuid}
+            branchId: {type: string, format: uuid}
+            baseSalary: {type: number, format: double}
+        taxProfile:
+          type: object
+          properties:
+            ptkpCode: {type: string, enum: [TK/0, TK/1, TK/2, TK/3, K/0, K/1, K/2, K/3, K/I/0, K/I/1, K/I/2, K/I/3]}
+            hasNpwp: {type: boolean}
+        bpjsProfile:
+          type: object
+          properties:
+            isKesEnrolled: {type: boolean}
+            isJhtEnrolled: {type: boolean}
+            isJpEnrolled: {type: boolean}
+
+    UpdateEmployeeRequest:
+      type: object
+      properties:
+        fullName: {type: string}
+        phone: {type: string}
+        address: {type: string}
+        managerId: {type: string, format: uuid}
+
+    EmployeePage:
+      type: object
+      properties:
+        data: {type: array, items: {$ref: '#/components/schemas/Employee'}}
+        pagination: {$ref: '#/components/schemas/Pagination'}
+
+    EmploymentContract:
+      type: object
+      properties:
+        id: {type: string, format: uuid}
+        contractType: {type: string}
+        startDate: {type: string, format: date}
+        endDate: {type: string, format: date, nullable: true}
+        baseSalary: {type: number}
+        positionId: {type: string, format: uuid}
+        status: {type: string}
+
+    OrgNode:
+      type: object
+      properties:
+        id: {type: string, format: uuid}
+        type: {type: string, enum: [company, branch, department, position, employee]}
+        name: {type: string}
+        children: {type: array, items: {$ref: '#/components/schemas/OrgNode'}}
+
+    # --- Attendance ---
+    ClockInRequest:
+      type: object
+      required: [latitude, longitude, accuracyMeters, isMockLocation, photoBase64, livenessPassed, timestampClient]
+      properties:
+        deviceId: {type: string, format: uuid}
+        timestampClient: {type: string, format: date-time, description: Client wall-clock at capture (server compares vs its own for skew)}
+        latitude: {type: number, minimum: -90, maximum: 90}
+        longitude: {type: number, minimum: -180, maximum: 180}
+        accuracyMeters: {type: number, minimum: 0}
+        isMockLocation: {type: boolean}
+        isRootJailbroken: {type: boolean, nullable: true}
+        photoBase64: {type: string, description: JPEG selfie, base64-encoded (max 500KB)}
+        livenessPassed: {type: boolean}
+        livenessScore: {type: number, minimum: 0, maximum: 1}
+
+    ClockOutRequest:
+      allOf:
+        - $ref: '#/components/schemas/ClockInRequest'
+
+    AttendanceLog:
+      type: object
+      properties:
+        id: {type: string, format: uuid}
+        employeeId: {type: string, format: uuid}
+        workDate: {type: string, format: date}
+        clockInAt: {type: string, format: date-time, nullable: true}
+        clockOutAt: {type: string, format: date-time, nullable: true}
+        status: {type: string, enum: [present, late, early_leave, absent, leave, holiday, wfh, sick, permit, pending_review]}
+        lateMinutes: {type: integer}
+        workedMinutes: {type: integer, nullable: true}
+        workLocationId: {type: string, format: uuid, nullable: true}
+        fraudScore: {type: integer, minimum: 0, maximum: 100}
+        fraudSignals:
+          type: object
+          description: Present when fraudScore > 0
+          additionalProperties: true
+        isAnomaly: {type: boolean}
+
+    AttendanceLogPage:
+      type: object
+      properties:
+        data: {type: array, items: {$ref: '#/components/schemas/AttendanceLog'}}
+        pagination: {$ref: '#/components/schemas/Pagination'}
+
+    # --- Leave ---
+    CreateLeaveRequest:
+      type: object
+      required: [leaveTypeId, startDate, endDate]
+      properties:
+        leaveTypeId: {type: string, format: uuid}
+        startDate: {type: string, format: date}
+        endDate: {type: string, format: date}
+        reason: {type: string}
+        attachmentDocumentId: {type: string, format: uuid, nullable: true}
+
+    LeaveRequest:
+      type: object
+      properties:
+        id: {type: string, format: uuid}
+        employeeId: {type: string, format: uuid}
+        leaveTypeCode: {type: string}
+        startDate: {type: string, format: date}
+        endDate: {type: string, format: date}
+        totalDays: {type: number}
+        status: {type: string, enum: [pending, approved, rejected, cancelled]}
+        approvalInstanceId: {type: string, format: uuid, nullable: true}
+        createdAt: {type: string, format: date-time}
+
+    LeaveBalance:
+      type: object
+      properties:
+        leaveTypeCode: {type: string}
+        year: {type: integer}
+        initialBalance: {type: number}
+        carryOver: {type: number}
+        used: {type: number}
+        pending: {type: number}
+        remaining: {type: number}
+
+    # --- Payroll ---
+    CreatePayrollRunRequest:
+      type: object
+      required: [periodId, companyId]
+      properties:
+        periodId: {type: string, format: uuid}
+        companyId: {type: string, format: uuid}
+        branchId: {type: string, format: uuid, nullable: true}
+        scope: {type: string, enum: [all, filtered]}
+        employeeIds: {type: array, items: {type: string, format: uuid}, description: Required if scope=filtered}
+
+    PayrollRun:
+      type: object
+      properties:
+        id: {type: string, format: uuid}
+        status: {type: string, enum: [draft, calculating, calculated, reviewed, approved, paid, cancelled, failed]}
+        periodId: {type: string, format: uuid}
+        totalEmployees: {type: integer, nullable: true}
+        totalGross: {type: number, nullable: true}
+        totalPph21: {type: number, nullable: true}
+        totalBpjsEmployee: {type: number, nullable: true}
+        totalBpjsEmployer: {type: number, nullable: true}
+        totalNet: {type: number, nullable: true}
+        rulePackVersion: {type: string, example: '2024.01'}
+        reviewedBy: {type: string, format: uuid, nullable: true}
+        approvedBy: {type: string, format: uuid, nullable: true}
+        calculatedAt: {type: string, format: date-time, nullable: true}
+
+    Payslip:
+      type: object
+      properties:
+        id: {type: string, format: uuid}
+        employeeId: {type: string, format: uuid}
+        payrollRunId: {type: string, format: uuid}
+        grossAmount: {type: number}
+        pph21Amount: {type: number}
+        bpjsEmployee: {type: number}
+        netAmount: {type: number}
+        lines:
+          type: array
+          items:
+            type: object
+            properties:
+              componentCode: {type: string}
+              category: {type: string, enum: [earning, deduction, benefit, reimbursement]}
+              amount: {type: number}
+              quantity: {type: number, nullable: true}
+
+    BankPaymentFile:
+      type: object
+      properties:
+        id: {type: string, format: uuid}
+        bankCode: {type: string}
+        format: {type: string, example: BCA_CSV}
+        totalAmount: {type: number}
+        totalRecords: {type: integer}
+        downloadUrl: {type: string, format: uri}
+
+    # --- Reimbursement ---
+    CreateReimbursementRequest:
+      type: object
+      required: [title, items]
+      properties:
+        title: {type: string}
+        description: {type: string}
+        items:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [categoryId, transactionDate, amount]
+            properties:
+              categoryId: {type: string, format: uuid}
+              transactionDate: {type: string, format: date}
+              description: {type: string}
+              amount: {type: number, minimum: 0}
+              ocrJobId: {type: string, format: uuid, nullable: true}
+              receiptDocumentId: {type: string, format: uuid, nullable: true}
+
+    ReimbursementRequest:
+      type: object
+      properties:
+        id: {type: string, format: uuid}
+        totalAmount: {type: number}
+        status: {type: string, enum: [draft, submitted, approved, rejected, paid, cancelled]}
+        fraudScore: {type: integer, minimum: 0, maximum: 100}
+        reviewStatus: {type: string, enum: [auto_pass, manual_review, blocked]}
+        approvalInstanceId: {type: string, format: uuid, nullable: true}
+
+    OcrJob:
+      type: object
+      properties:
+        id: {type: string, format: uuid}
+        status: {type: string, enum: [queued, processing, done, failed]}
+        extractedData:
+          type: object
+          properties:
+            vendor: {type: string}
+            date: {type: string, format: date}
+            total: {type: number}
+            items: {type: array, items: {type: object}}
+        confidenceScores:
+          type: object
+          additionalProperties: {type: number}
+
+    OcrResult:
+      type: object
+      properties:
+        fields: {type: object, additionalProperties: true}
+        confidence: {type: object, additionalProperties: {type: number}}
+
+    # --- Loan ---
+    LoanEligibility:
+      type: object
+      properties:
+        eligible: {type: boolean}
+        reasons: {type: array, items: {type: string}}
+        monthlyInstallment: {type: number}
+        totalPayable: {type: number}
+        currentDtiPercent: {type: number}
+        projectedDtiPercent: {type: number}
+        maxDtiPercent: {type: number}
+        schedule:
+          type: array
+          items:
+            type: object
+            properties:
+              installmentNo: {type: integer}
+              dueDate: {type: string, format: date}
+              principalAmount: {type: number}
+              interestAmount: {type: number}
+              totalAmount: {type: number}
+
+    CreateLoanRequest:
+      type: object
+      required: [loanTypeId, principalAmount, tenorMonths]
+      properties:
+        loanTypeId: {type: string, format: uuid}
+        principalAmount: {type: number, minimum: 0}
+        tenorMonths: {type: integer, minimum: 1}
+        purpose: {type: string}
+
+    Loan:
+      type: object
+      properties:
+        id: {type: string, format: uuid}
+        loanNo: {type: string}
+        status: {type: string, enum: [pending, approved, rejected, disbursed, active, settled, defaulted, cancelled]}
+        principalAmount: {type: number}
+        outstandingAmount: {type: number}
+        monthlyInstallment: {type: number}
+        tenorMonths: {type: integer}
+        firstInstallmentDate: {type: string, format: date, nullable: true}
+
+    # --- Workflow ---
+    ApprovalInboxItem:
+      type: object
+      properties:
+        instanceId: {type: string, format: uuid}
+        module: {type: string, enum: [leave, overtime, reimbursement, loan, cash_advance, offer, attendance_correction]}
+        referenceId: {type: string, format: uuid}
+        summary: {type: string}
+        amount: {type: number, nullable: true}
+        requesterName: {type: string}
+        requestedAt: {type: string, format: date-time}
+        currentStep: {type: integer}
+
+    # --- Documents ---
+    UploadUrlRequest:
+      type: object
+      required: [module, filename, size, mime]
+      properties:
+        module: {type: string, enum: [employee, reimbursement, contract, generic]}
+        ownerId: {type: string, format: uuid, nullable: true}
+        filename: {type: string}
+        size: {type: integer, maximum: 10485760, description: Max 10MB}
+        mime: {type: string}
+
+    UploadUrl:
+      type: object
+      properties:
+        uploadUrl: {type: string, format: uri, description: Presigned S3 PUT URL}
+        documentId: {type: string, format: uuid}
+        expiresAt: {type: string, format: date-time}
+
+    # --- Reports ---
+    HrDashboard:
+      type: object
+      properties:
+        period: {type: string}
+        headcount:
+          type: object
+          properties:
+            total: {type: integer}
+            active: {type: integer}
+            probation: {type: integer}
+            byDepartment: {type: object, additionalProperties: {type: integer}}
+        attendance:
+          type: object
+          properties:
+            presentRate: {type: number}
+            lateCount: {type: integer}
+            onLeaveCount: {type: integer}
+        payroll:
+          type: object
+          properties:
+            lastPeriodNet: {type: number}
+            momPercent: {type: number}
+        fraudAlerts:
+          type: object
+          properties:
+            attendance: {type: integer}
+            reimbursement: {type: integer}
