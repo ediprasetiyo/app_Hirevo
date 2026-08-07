@@ -1,0 +1,107 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Design tokens — light theme (default). Values mirror design/tokens/light.json.
+   Swap semantics under `.dark` (see below). */
+:root {
+  color-scheme: light;
+
+  /* Brand */
+  --color-brand: #5B4FE6;
+  --color-brand-subtle: #EEEBFE;
+  --color-text-brand: #4A3FCF;
+
+  /* Background */
+  --color-bg-canvas: #F8FAFC;
+  --color-bg-surface: #FFFFFF;
+  --color-bg-raised: #FFFFFF;
+  --color-bg-sunken: #F1F5F9;
+
+  /* Text */
+  --color-text-primary: #0F172A;
+  --color-text-secondary: #475569;
+  --color-text-tertiary: #64748B;
+  --color-text-inverse: #FFFFFF;
+
+  /* Border */
+  --color-border-default: #CBD5E1;
+  --color-border-subtle: #E2E8F0;
+  --color-border-strong: #94A3B8;
+
+  /* Status */
+  --color-status-success: #059669;
+  --color-status-success-bg: #D1FAE5;
+  --color-status-danger: #DC2626;
+  --color-status-danger-bg: #FEE2E2;
+  --color-status-warning: #D97706;
+  --color-status-warning-bg: #FEF3C7;
+  --color-status-info: #2563EB;
+  --color-status-info-bg: #DBEAFE;
+
+  /* Radius */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+
+  /* Font */
+  --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+}
+
+.dark {
+  color-scheme: dark;
+
+  --color-brand-subtle: #1E1B58;
+  --color-text-brand: #8E77F5;
+
+  --color-bg-canvas: #020617;
+  --color-bg-surface: #0F172A;
+  --color-bg-raised: #1E293B;
+  --color-bg-sunken: #0F172A;
+
+  --color-text-primary: #F8FAFC;
+  --color-text-secondary: #CBD5E1;
+  --color-text-tertiary: #94A3B8;
+  --color-text-inverse: #0F172A;
+
+  --color-border-default: #334155;
+  --color-border-subtle: #1E293B;
+  --color-border-strong: #475569;
+}
+
+/* Base */
+body {
+  @apply bg-canvas text-fg font-sans antialiased;
+}
+
+/* Focus ring for a11y */
+*:focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Auto dark mode via system preference — allow user override via .dark class on <html>. */
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    color-scheme: dark;
+
+    --color-brand-subtle: #1E1B58;
+    --color-text-brand: #8E77F5;
+
+    --color-bg-canvas: #020617;
+    --color-bg-surface: #0F172A;
+    --color-bg-raised: #1E293B;
+    --color-bg-sunken: #0F172A;
+
+    --color-text-primary: #F8FAFC;
+    --color-text-secondary: #CBD5E1;
+    --color-text-tertiary: #94A3B8;
+    --color-text-inverse: #0F172A;
+
+    --color-border-default: #334155;
+    --color-border-subtle: #1E293B;
+    --color-border-strong: #475569;
+  }
+}
