@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 800" font-family="Inter, sans-serif">
+  <rect width="1280" height="800" fill="#F1F5F9"/>
+
+  <!-- Left hero panel -->
+  <rect x="0" y="0" width="640" height="800" fill="#5B4FE6"/>
+  <text x="80" y="120" fill="#FFFFFF" font-size="40" font-weight="700">Hirevo HRIS</text>
+  <text x="80" y="160" fill="#D9D2FD" font-size="18">HR yang tidak bikin pusing</text>
+
+  <g transform="translate(80, 240)" fill="#FFFFFF" font-size="16">
+    <circle cx="14" cy="0" r="14" fill="#FFFFFF33"/>
+    <text x="40" y="6" font-weight="600">Payroll otomatis dengan PPh 21 TER 2024</text>
+    <circle cx="14" cy="60" r="14" fill="#FFFFFF33"/>
+    <text x="40" y="66" font-weight="600">Attendance mobile dengan Face + Anti Mock GPS</text>
+    <circle cx="14" cy="120" r="14" fill="#FFFFFF33"/>
+    <text x="40" y="126" font-weight="600">Free untuk UMKM ≤ 5 karyawan</text>
+    <circle cx="14" cy="180" r="14" fill="#FFFFFF33"/>
+    <text x="40" y="186" font-weight="600">BPJS auto-calculate + file ekspor SIPP/EDABU</text>
+  </g>
+
+  <g transform="translate(80, 720)" fill="#D9D2FD" font-size="12">
+    <text>✓ Terdaftar PSE Kominfo · Data disimpan di Indonesia</text>
+  </g>
+
+  <!-- Right form card -->
+  <rect x="820" y="180" width="380" height="480" rx="16" fill="#FFFFFF" stroke="#E2E8F0"/>
+
+  <text x="852" y="230" fill="#0F172A" font-size="22" font-weight="700">Masuk ke akun Anda</text>
+  <text x="852" y="256" fill="#64748B" font-size="13">Belum punya akun? <tspan fill="#5B4FE6" font-weight="600">Daftar</tspan></text>
+
+  <!-- Email -->
+  <text x="852" y="304" fill="#334155" font-size="12" font-weight="600">EMAIL</text>
+  <rect x="852" y="316" width="316" height="44" rx="8" fill="#F8FAFC" stroke="#CBD5E1"/>
+  <text x="868" y="343" fill="#94A3B8" font-size="14">edi@perusahaan.com</text>
+
+  <!-- Password -->
+  <text x="852" y="388" fill="#334155" font-size="12" font-weight="600">KATA SANDI</text>
+  <rect x="852" y="400" width="316" height="44" rx="8" fill="#F8FAFC" stroke="#CBD5E1"/>
+  <text x="868" y="427" fill="#94A3B8" font-size="14">••••••••••</text>
+  <text x="1145" y="427" fill="#5B4FE6" font-size="12" font-weight="600" text-anchor="end">👁</text>
+
+  <!-- Remember + forgot -->
+  <rect x="852" y="464" width="16" height="16" rx="4" fill="#FFFFFF" stroke="#CBD5E1"/>
+  <text x="878" y="477" fill="#475569" font-size="13">Percayai perangkat ini 30 hari</text>
+  <text x="1168" y="477" fill="#5B4FE6" font-size="13" font-weight="600" text-anchor="end">Lupa sandi?</text>
+
+  <!-- Submit -->
+  <rect x="852" y="512" width="316" height="48" rx="8" fill="#5B4FE6"/>
+  <text x="1010" y="542" fill="#FFFFFF" font-size="15" font-weight="600" text-anchor="middle">Masuk</text>
+
+  <!-- Divider -->
+  <line x1="852" y1="592" x2="960" y2="592" stroke="#E2E8F0"/>
+  <text x="1010" y="596" fill="#94A3B8" font-size="12" text-anchor="middle">atau</text>
+  <line x1="1060" y1="592" x2="1168" y2="592" stroke="#E2E8F0"/>
+
+  <!-- WebAuthn -->
+  <rect x="852" y="612" width="316" height="44" rx="8" fill="#FFFFFF" stroke="#CBD5E1"/>
+  <text x="1010" y="640" fill="#0F172A" font-size="14" font-weight="600" text-anchor="middle">🔑 Masuk dengan Passkey (WebAuthn)</text>
+</svg>

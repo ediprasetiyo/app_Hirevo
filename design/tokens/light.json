@@ -1,0 +1,54 @@
+{
+  "$description": "Semantic tokens for the light theme. Consumed by Tailwind config + Flutter theme.",
+  "background": {
+    "canvas":     { "$value": "{color.gray.50}",  "$type": "color" },
+    "surface":    { "$value": "#FFFFFF",          "$type": "color" },
+    "raised":     { "$value": "#FFFFFF",          "$type": "color" },
+    "sunken":     { "$value": "{color.gray.100}", "$type": "color" },
+    "overlay":    { "$value": "#0F172A99",        "$type": "color" },
+    "brand":      { "$value": "{brand.accent.500}", "$type": "color" },
+    "brand-subtle":{"$value": "{brand.accent.50}",  "$type": "color" }
+  },
+  "text": {
+    "primary":   { "$value": "{color.gray.900}", "$type": "color" },
+    "secondary": { "$value": "{color.gray.600}", "$type": "color" },
+    "tertiary":  { "$value": "{color.gray.500}", "$type": "color" },
+    "disabled":  { "$value": "{color.gray.400}", "$type": "color" },
+    "inverse":   { "$value": "#FFFFFF",          "$type": "color" },
+    "brand":     { "$value": "{brand.accent.600}", "$type": "color" },
+    "link":      { "$value": "{brand.accent.600}", "$type": "color" }
+  },
+  "border": {
+    "subtle":    { "$value": "{color.gray.200}", "$type": "color" },
+    "default":   { "$value": "{color.gray.300}", "$type": "color" },
+    "strong":    { "$value": "{color.gray.400}", "$type": "color" },
+    "brand":     { "$value": "{brand.accent.500}", "$type": "color" },
+    "focus":     { "$value": "{brand.accent.400}", "$type": "color" }
+  },
+  "status": {
+    "success":   { "$value": "{color.green.600}", "$type": "color" },
+    "success-bg":{ "$value": "{color.green.100}", "$type": "color" },
+    "danger":    { "$value": "{color.red.600}",   "$type": "color" },
+    "danger-bg": { "$value": "{color.red.100}",   "$type": "color" },
+    "warning":   { "$value": "{color.amber.600}", "$type": "color" },
+    "warning-bg":{ "$value": "{color.amber.100}", "$type": "color" },
+    "info":      { "$value": "{color.blue.600}",  "$type": "color" },
+    "info-bg":   { "$value": "{color.blue.100}",  "$type": "color" }
+  },
+  "attendance": {
+    "present-bg":  { "$value": "{color.green.100}", "$type": "color" },
+    "present-fg":  { "$value": "{color.green.600}", "$type": "color" },
+    "late-bg":     { "$value": "{color.amber.100}", "$type": "color" },
+    "late-fg":     { "$value": "{color.amber.600}", "$type": "color" },
+    "absent-bg":   { "$value": "{color.red.100}",   "$type": "color" },
+    "absent-fg":   { "$value": "{color.red.600}",   "$type": "color" },
+    "leave-bg":    { "$value": "{color.blue.100}",  "$type": "color" },
+    "leave-fg":    { "$value": "{color.blue.600}",  "$type": "color" },
+    "anomaly-fg":  { "$value": "{color.red.600}",   "$type": "color" }
+  },
+  "fraud": {
+    "score-low":     { "$value": "{color.green.600}", "$type": "color" },
+    "score-medium":  { "$value": "{color.amber.600}", "$type": "color" },
+    "score-high":    { "$value": "{color.red.600}",   "$type": "color" }
+  }
+}

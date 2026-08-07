@@ -1,0 +1,19 @@
+{
+  "$description": "Brand accent — override per tenant for white-label (Enterprise). Referenced by semantic tokens as {brand.accent.*}.",
+  "brand": {
+    "name":     { "$value": "Hirevo", "$type": "string" },
+    "accent": {
+      "50":  { "$value": "#EEEBFE", "$type": "color" },
+      "100": { "$value": "#D9D2FD", "$type": "color" },
+      "200": { "$value": "#B4A5FB", "$type": "color" },
+      "300": { "$value": "#8E77F5", "$type": "color" },
+      "400": { "$value": "#7263EF", "$type": "color" },
+      "500": { "$value": "#5B4FE6", "$type": "color" },
+      "600": { "$value": "#4A3FCF", "$type": "color" },
+      "700": { "$value": "#3B32A8", "$type": "color" },
+      "800": { "$value": "#2C2680", "$type": "color" },
+      "900": { "$value": "#1E1B58", "$type": "color" }
+    },
+    "logoText": { "$value": "#5B4FE6", "$type": "color" }
+  }
+}

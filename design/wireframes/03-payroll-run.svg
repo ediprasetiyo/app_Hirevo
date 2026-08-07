@@ -1,0 +1,112 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" font-family="Inter, sans-serif">
+  <rect width="1440" height="900" fill="#F8FAFC"/>
+
+  <!-- Simplified sidebar + topbar -->
+  <rect x="0" y="0" width="240" height="900" fill="#FFFFFF" stroke="#E2E8F0"/>
+  <text x="24" y="40" fill="#5B4FE6" font-size="18" font-weight="700">Hirevo</text>
+  <rect x="12" y="216" width="216" height="36" rx="8" fill="#EEEBFE"/>
+  <text x="28" y="239" fill="#5B4FE6" font-size="13" font-weight="600">💰 Payroll</text>
+
+  <rect x="240" y="0" width="1200" height="64" fill="#FFFFFF" stroke="#E2E8F0"/>
+
+  <!-- Breadcrumb -->
+  <text x="264" y="100" fill="#64748B" font-size="12">Payroll › Runs › Juli 2026 › Review</text>
+  <text x="264" y="140" fill="#0F172A" font-size="26" font-weight="700">Payroll Run — Juli 2026</text>
+
+  <!-- Progress stepper -->
+  <g transform="translate(264, 172)">
+    <g>
+      <circle cx="12" cy="12" r="12" fill="#5B4FE6"/>
+      <text x="12" y="16" fill="#FFF" font-size="11" text-anchor="middle" font-weight="700">✓</text>
+      <text x="32" y="17" fill="#0F172A" font-size="13" font-weight="600">Draft</text>
+    </g>
+    <line x1="88" y1="12" x2="180" y2="12" stroke="#5B4FE6" stroke-width="2"/>
+    <g transform="translate(180, 0)">
+      <circle cx="12" cy="12" r="12" fill="#5B4FE6"/>
+      <text x="12" y="16" fill="#FFF" font-size="11" text-anchor="middle" font-weight="700">✓</text>
+      <text x="32" y="17" fill="#0F172A" font-size="13" font-weight="600">Calculated</text>
+    </g>
+    <line x1="288" y1="12" x2="380" y2="12" stroke="#5B4FE6" stroke-width="2"/>
+    <g transform="translate(380, 0)">
+      <circle cx="12" cy="12" r="12" fill="#5B4FE6" stroke="#5B4FE6" stroke-width="3"/>
+      <text x="12" y="16" fill="#FFF" font-size="11" text-anchor="middle" font-weight="700">3</text>
+      <text x="32" y="17" fill="#5B4FE6" font-size="13" font-weight="600">Review</text>
+    </g>
+    <line x1="472" y1="12" x2="564" y2="12" stroke="#CBD5E1" stroke-width="2" stroke-dasharray="4"/>
+    <g transform="translate(564, 0)">
+      <circle cx="12" cy="12" r="12" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2"/>
+      <text x="12" y="16" fill="#94A3B8" font-size="11" text-anchor="middle" font-weight="700">4</text>
+      <text x="32" y="17" fill="#94A3B8" font-size="13">Approve</text>
+    </g>
+    <line x1="670" y1="12" x2="762" y2="12" stroke="#CBD5E1" stroke-width="2" stroke-dasharray="4"/>
+    <g transform="translate(762, 0)">
+      <circle cx="12" cy="12" r="12" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2"/>
+      <text x="12" y="16" fill="#94A3B8" font-size="11" text-anchor="middle" font-weight="700">5</text>
+      <text x="32" y="17" fill="#94A3B8" font-size="13">Paid</text>
+    </g>
+  </g>
+
+  <!-- Summary card -->
+  <rect x="264" y="228" width="756" height="440" rx="12" fill="#FFFFFF" stroke="#E2E8F0"/>
+  <text x="288" y="260" fill="#0F172A" font-size="16" font-weight="600">Ringkasan Kalkulasi</text>
+  <text x="288" y="278" fill="#64748B" font-size="12">Periode 1-31 Juli 2026 · Rule pack v2024.01 · 248 karyawan</text>
+
+  <g font-family="Inter" font-size="14">
+    <line x1="288" y1="298" x2="996" y2="298" stroke="#E2E8F0"/>
+
+    <text x="288" y="330" fill="#475569">Gaji Pokok</text>
+    <text x="996" y="330" fill="#0F172A" font-weight="600" text-anchor="end">Rp 1.850.000.000</text>
+
+    <text x="288" y="360" fill="#475569">Tunjangan Tetap</text>
+    <text x="996" y="360" fill="#0F172A" font-weight="600" text-anchor="end">Rp   485.000.000</text>
+
+    <text x="288" y="390" fill="#475569">Lembur (PP 35/2021)</text>
+    <text x="996" y="390" fill="#0F172A" font-weight="600" text-anchor="end">Rp    85.000.000</text>
+
+    <text x="288" y="420" fill="#475569">Insentif &amp; Bonus</text>
+    <text x="996" y="420" fill="#0F172A" font-weight="600" text-anchor="end">Rp    30.000.000</text>
+
+    <line x1="288" y1="440" x2="996" y2="440" stroke="#E2E8F0"/>
+    <text x="288" y="470" fill="#0F172A" font-weight="700">Total Gross</text>
+    <text x="996" y="470" fill="#0F172A" font-weight="700" text-anchor="end">Rp 2.450.000.000</text>
+
+    <text x="288" y="504" fill="#DC2626">− BPJS Karyawan</text>
+    <text x="996" y="504" fill="#DC2626" text-anchor="end">Rp   178.500.000</text>
+
+    <text x="288" y="530" fill="#DC2626">− PPh 21 (TER)</text>
+    <text x="996" y="530" fill="#DC2626" text-anchor="end">Rp    95.250.000</text>
+
+    <text x="288" y="556" fill="#DC2626">− Pinjaman / Kasbon</text>
+    <text x="996" y="556" fill="#DC2626" text-anchor="end">Rp    12.500.000</text>
+
+    <line x1="288" y1="576" x2="996" y2="576" stroke="#0F172A" stroke-width="2"/>
+    <text x="288" y="608" fill="#059669" font-size="18" font-weight="700">Net dibayarkan</text>
+    <text x="996" y="608" fill="#059669" font-size="18" font-weight="700" text-anchor="end">Rp 2.163.750.000</text>
+
+    <text x="288" y="640" fill="#64748B" font-size="12">Employer contribution (BPJS): Rp 187.500.000</text>
+  </g>
+
+  <!-- Side panel: warnings + actions -->
+  <rect x="1044" y="228" width="372" height="216" rx="12" fill="#FEF3C7" stroke="#F59E0B"/>
+  <text x="1068" y="256" fill="#D97706" font-size="14" font-weight="700">⚠ 3 hal perlu perhatian</text>
+  <g fill="#78350F" font-size="12">
+    <text x="1068" y="288">• Rudi H.: PPh 21 lebih tinggi 15% dari Juni (karena bonus)</text>
+    <text x="1068" y="316">• Ana W.: masa kerja 11 bulan — belum eligible THR</text>
+    <text x="1068" y="344">• 2 karyawan tidak punya rekening BCA — bank file terpisah</text>
+    <text x="1068" y="386" fill="#D97706" font-weight="600">Review detail per karyawan →</text>
+  </g>
+
+  <!-- Action buttons -->
+  <rect x="1044" y="468" width="372" height="80" rx="12" fill="#FFFFFF" stroke="#E2E8F0"/>
+  <rect x="1068" y="488" width="164" height="40" rx="8" fill="#FFFFFF" stroke="#CBD5E1"/>
+  <text x="1150" y="513" fill="#334155" font-size="13" font-weight="600" text-anchor="middle">Recalculate</text>
+  <rect x="1244" y="488" width="148" height="40" rx="8" fill="#5B4FE6"/>
+  <text x="1318" y="513" fill="#FFFFFF" font-size="13" font-weight="600" text-anchor="middle">Kirim ke Approver →</text>
+
+  <!-- Audit box -->
+  <rect x="1044" y="572" width="372" height="96" rx="12" fill="#F1F5F9" stroke="#E2E8F0"/>
+  <text x="1068" y="600" fill="#0F172A" font-size="12" font-weight="600">🔒 4-Eyes Principle</text>
+  <text x="1068" y="622" fill="#64748B" font-size="11">Reviewer: Edi P. (Anda)</text>
+  <text x="1068" y="642" fill="#64748B" font-size="11">Approver harus user berbeda</text>
+  <text x="1068" y="660" fill="#5B4FE6" font-size="11" font-weight="600">Semua aksi tercatat di audit log →</text>
+</svg>

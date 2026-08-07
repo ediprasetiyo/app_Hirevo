@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 390 844" font-family="Inter, sans-serif">
+  <!-- Full-screen camera preview -->
+  <rect width="390" height="844" fill="#0F172A"/>
+
+  <!-- Simulated camera feed (dark radial gradient) -->
+  <defs>
+    <radialGradient id="camera" cx="50%" cy="45%" r="60%">
+      <stop offset="0%" stop-color="#334155"/>
+      <stop offset="100%" stop-color="#020617"/>
+    </radialGradient>
+  </defs>
+  <rect width="390" height="844" fill="url(#camera)"/>
+
+  <!-- Face oval guide -->
+  <ellipse cx="195" cy="380" rx="130" ry="170" fill="none" stroke="#5B4FE6" stroke-width="3" stroke-dasharray="8 4"/>
+
+  <!-- Simulated silhouette -->
+  <ellipse cx="195" cy="380" rx="90" ry="120" fill="#475569" opacity="0.8"/>
+  <circle cx="195" cy="360" r="40" fill="#64748B"/>
+
+  <!-- Top bar (X + info) -->
+  <rect x="0" y="0" width="390" height="80" fill="#000000" opacity="0.5"/>
+  <text x="24" y="48" fill="#FFFFFF" font-size="22">✕</text>
+  <text x="195" y="42" fill="#FFFFFF" font-size="14" font-weight="600" text-anchor="middle">Clock In</text>
+  <text x="195" y="60" fill="#94A3B8" font-size="11" text-anchor="middle">Senin, 1 Juli 2026 · 08:01</text>
+
+  <!-- Liveness prompt -->
+  <rect x="40" y="120" width="310" height="60" rx="30" fill="#000000" opacity="0.7"/>
+  <text x="195" y="146" fill="#FFFFFF" font-size="14" font-weight="600" text-anchor="middle">👁 Kedipkan mata Anda</text>
+  <text x="195" y="164" fill="#D9D2FD" font-size="11" text-anchor="middle">Pastikan wajah dalam bingkai oval</text>
+
+  <!-- GPS + geofence status card (bottom) -->
+  <rect x="0" y="620" width="390" height="224" fill="#FFFFFF"/>
+
+  <g transform="translate(24, 640)">
+    <text fill="#0F172A" font-size="12" font-weight="700">📍 LOKASI TERDETEKSI</text>
+
+    <rect x="0" y="16" width="342" height="60" rx="12" fill="#D1FAE5"/>
+    <circle cx="24" cy="46" r="12" fill="#10B981"/>
+    <text x="24" y="51" fill="#FFF" font-size="14" text-anchor="middle" font-weight="700">✓</text>
+    <text x="52" y="42" fill="#065F46" font-size="13" font-weight="700">Di dalam area Kantor Pusat</text>
+    <text x="52" y="60" fill="#047857" font-size="11">-6.2345°, 106.8234° · akurasi 8m · dalam radius 100m</text>
+
+    <text x="0" y="104" fill="#0F172A" font-size="12" font-weight="700">🛡️ CEK KEAMANAN</text>
+    <g font-size="12" fill="#059669">
+      <text x="0" y="128">✓ Mock GPS: tidak terdeteksi</text>
+      <text x="0" y="148">✓ Root/Jailbreak: aman</text>
+      <text x="0" y="168">✓ Liveness: berhasil</text>
+    </g>
+  </g>
+
+  <!-- Auto-capture indicator -->
+  <circle cx="195" cy="580" r="30" fill="none" stroke="#5B4FE6" stroke-width="4"/>
+  <text x="195" y="586" fill="#5B4FE6" font-size="14" font-weight="700" text-anchor="middle">3s</text>
+</svg>

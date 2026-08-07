@@ -1,0 +1,118 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 900" font-family="Inter, sans-serif">
+  <rect width="1440" height="900" fill="#F8FAFC"/>
+
+  <!-- Sidebar -->
+  <rect x="0" y="0" width="240" height="900" fill="#FFFFFF" stroke="#E2E8F0"/>
+  <text x="24" y="40" fill="#5B4FE6" font-size="18" font-weight="700">Hirevo</text>
+  <text x="24" y="56" fill="#64748B" font-size="10">acme.hirevo.id</text>
+
+  <g fill="#334155" font-size="13">
+    <rect x="12" y="88" width="216" height="36" rx="8" fill="#EEEBFE"/>
+    <text x="28" y="111" fill="#5B4FE6" font-weight="600">🏠 Dashboard</text>
+    <text x="28" y="151">👥 Karyawan</text>
+    <text x="28" y="183">⏰ Attendance</text>
+    <text x="28" y="215">🌴 Cuti</text>
+    <text x="28" y="247">💰 Payroll</text>
+    <text x="28" y="279">🧾 Reimbursement</text>
+    <text x="28" y="311">💳 Pinjaman</text>
+    <text x="28" y="343">📊 Laporan</text>
+    <text x="28" y="375">⚙️ Setelan</text>
+  </g>
+
+  <!-- Topbar -->
+  <rect x="240" y="0" width="1200" height="64" fill="#FFFFFF" stroke="#E2E8F0"/>
+  <rect x="264" y="16" width="360" height="32" rx="16" fill="#F1F5F9"/>
+  <text x="284" y="37" fill="#94A3B8" font-size="13">🔍 Cari karyawan, cuti, slip... (⌘K)</text>
+  <text x="1300" y="37" font-size="16">🔔</text>
+  <circle cx="1400" cy="32" r="16" fill="#5B4FE6"/>
+  <text x="1400" y="37" fill="#FFFFFF" font-size="12" font-weight="700" text-anchor="middle">ED</text>
+
+  <!-- Main content -->
+  <text x="264" y="112" fill="#0F172A" font-size="26" font-weight="700">Halo Edi 👋</text>
+  <text x="264" y="136" fill="#64748B" font-size="14">Acme Corp · Juli 2026 · 248 karyawan aktif</text>
+
+  <!-- Filters top-right -->
+  <rect x="1220" y="96" width="200" height="36" rx="8" fill="#FFFFFF" stroke="#CBD5E1"/>
+  <text x="1236" y="119" fill="#334155" font-size="13">📅 Juli 2026 · Semua Cabang ▾</text>
+
+  <!-- Setup checklist banner -->
+  <rect x="264" y="164" width="1152" height="56" rx="12" fill="#EEEBFE" stroke="#B4A5FB"/>
+  <text x="288" y="186" fill="#3B32A8" font-size="14" font-weight="600">🎯 Setup checklist: 85% selesai</text>
+  <text x="288" y="206" fill="#4A3FCF" font-size="12">Lanjut: Enroll wajah karyawan (32 tersisa) · Konfigurasi shift · Undang finance team</text>
+  <rect x="1096" y="180" width="300" height="8" rx="4" fill="#D9D2FD"/>
+  <rect x="1096" y="180" width="255" height="8" rx="4" fill="#5B4FE6"/>
+
+  <!-- KPI cards -->
+  <g>
+    <rect x="264" y="248" width="272" height="104" rx="12" fill="#FFFFFF" stroke="#E2E8F0"/>
+    <text x="288" y="278" fill="#64748B" font-size="12">HEADCOUNT</text>
+    <text x="288" y="316" fill="#0F172A" font-size="32" font-weight="700">248</text>
+    <text x="288" y="338" fill="#059669" font-size="12">▲ 4 karyawan bulan ini</text>
+  </g>
+  <g>
+    <rect x="556" y="248" width="272" height="104" rx="12" fill="#FFFFFF" stroke="#E2E8F0"/>
+    <text x="580" y="278" fill="#64748B" font-size="12">ATTENDANCE HARI INI</text>
+    <text x="580" y="316" fill="#0F172A" font-size="32" font-weight="700">95%</text>
+    <text x="580" y="338" fill="#DC2626" font-size="12">5 terlambat · 12 cuti</text>
+  </g>
+  <g>
+    <rect x="848" y="248" width="272" height="104" rx="12" fill="#FFFFFF" stroke="#E2E8F0"/>
+    <text x="872" y="278" fill="#64748B" font-size="12">PAYROLL JUNI 2026</text>
+    <text x="872" y="316" fill="#0F172A" font-size="26" font-weight="700">Rp 2,24 M</text>
+    <text x="872" y="338" fill="#059669" font-size="12">▼ 1.2% dari Mei</text>
+  </g>
+  <g>
+    <rect x="1140" y="248" width="276" height="104" rx="12" fill="#FEF3C7" stroke="#F59E0B"/>
+    <text x="1164" y="278" fill="#D97706" font-size="12" font-weight="600">⚠ FRAUD ALERT</text>
+    <text x="1164" y="316" fill="#0F172A" font-size="32" font-weight="700">3</text>
+    <text x="1164" y="338" fill="#D97706" font-size="12">Attendance flagged · Review →</text>
+  </g>
+
+  <!-- Chart card -->
+  <g>
+    <rect x="264" y="380" width="720" height="320" rx="12" fill="#FFFFFF" stroke="#E2E8F0"/>
+    <text x="288" y="412" fill="#0F172A" font-size="16" font-weight="600">Payroll Cost 6 Bulan Terakhir</text>
+    <polyline points="288,620 400,600 512,580 624,570 736,590 848,570 960,560"
+              stroke="#5B4FE6" stroke-width="3" fill="none"/>
+    <g fill="#5B4FE6">
+      <circle cx="288" cy="620" r="5"/><circle cx="400" cy="600" r="5"/>
+      <circle cx="512" cy="580" r="5"/><circle cx="624" cy="570" r="5"/>
+      <circle cx="736" cy="590" r="5"/><circle cx="848" cy="570" r="5"/>
+      <circle cx="960" cy="560" r="5"/>
+    </g>
+    <g fill="#94A3B8" font-size="11">
+      <text x="288" y="670" text-anchor="middle">Feb</text>
+      <text x="400" y="670" text-anchor="middle">Mar</text>
+      <text x="512" y="670" text-anchor="middle">Apr</text>
+      <text x="624" y="670" text-anchor="middle">Mei</text>
+      <text x="736" y="670" text-anchor="middle">Jun</text>
+      <text x="848" y="670" text-anchor="middle">Jul</text>
+    </g>
+  </g>
+
+  <!-- Recent activity -->
+  <g>
+    <rect x="1004" y="380" width="412" height="320" rx="12" fill="#FFFFFF" stroke="#E2E8F0"/>
+    <text x="1028" y="412" fill="#0F172A" font-size="16" font-weight="600">Aktivitas Terbaru</text>
+    <g font-size="12">
+      <text x="1028" y="450" fill="#334155">🕐 08:15 · Rudi H. clock-in terlambat</text>
+      <text x="1028" y="474" fill="#94A3B8">15 menit lalu</text>
+
+      <text x="1028" y="510" fill="#334155">✅ Payroll Juni disetujui Sari</text>
+      <text x="1028" y="534" fill="#94A3B8">2 jam lalu</text>
+
+      <text x="1028" y="570" fill="#334155">📝 3 reimbursement menunggu approval</text>
+      <text x="1028" y="594" fill="#94A3B8">3 jam lalu</text>
+
+      <text x="1028" y="630" fill="#334155">👋 Karyawan baru: Ahmad — SE</text>
+      <text x="1028" y="654" fill="#94A3B8">kemarin</text>
+    </g>
+  </g>
+
+  <!-- Bottom row -->
+  <g>
+    <rect x="264" y="720" width="1152" height="100" rx="12" fill="#FFFFFF" stroke="#E2E8F0"/>
+    <text x="288" y="752" fill="#0F172A" font-size="14" font-weight="600">Akan Datang</text>
+    <text x="288" y="782" fill="#64748B" font-size="12">🎂 3 ulang tahun minggu ini · 📅 5 kontrak habis dalam 30 hari · 🏖 12 karyawan cuti besok</text>
+  </g>
+</svg>

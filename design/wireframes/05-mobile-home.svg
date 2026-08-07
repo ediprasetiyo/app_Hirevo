@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 390 844" font-family="Inter, sans-serif">
+  <!-- Phone frame -->
+  <rect width="390" height="844" fill="#F8FAFC"/>
+
+  <!-- Status bar -->
+  <rect x="0" y="0" width="390" height="44" fill="#FFFFFF"/>
+  <text x="24" y="28" fill="#0F172A" font-size="13" font-weight="600">09:42</text>
+  <text x="366" y="28" fill="#0F172A" font-size="11" text-anchor="end">📶 🔋</text>
+
+  <!-- App bar -->
+  <rect x="0" y="44" width="390" height="60" fill="#FFFFFF" stroke="#E2E8F0"/>
+  <text x="24" y="80" fill="#0F172A" font-size="20" font-weight="700">Halo, Rudi 👋</text>
+  <text x="24" y="98" fill="#64748B" font-size="12">Senin, 1 Juli 2026</text>
+
+  <!-- Clock-in big card (brand gradient look) -->
+  <rect x="16" y="128" width="358" height="152" rx="20" fill="#5B4FE6"/>
+  <text x="40" y="164" fill="#D9D2FD" font-size="12" font-weight="600">HARI INI</text>
+  <text x="40" y="196" fill="#FFFFFF" font-size="24" font-weight="700">Belum absen</text>
+  <text x="40" y="220" fill="#EEEBFE" font-size="13">Shift Pagi · 08:00 - 17:00 · Kantor Pusat</text>
+
+  <rect x="40" y="236" width="140" height="36" rx="18" fill="#FFFFFF"/>
+  <text x="110" y="259" fill="#5B4FE6" font-size="13" font-weight="700" text-anchor="middle">📸 Clock In</text>
+
+  <text x="358" y="164" fill="#EEEBFE" font-size="20" text-anchor="end">📍</text>
+
+  <!-- Announcement -->
+  <text x="24" y="316" fill="#334155" font-size="14" font-weight="600">Pengumuman</text>
+
+  <rect x="16" y="328" width="358" height="80" rx="12" fill="#FFFFFF" stroke="#E2E8F0"/>
+  <circle cx="40" cy="368" r="12" fill="#DBEAFE"/>
+  <text x="40" y="373" fill="#2563EB" font-size="12" text-anchor="middle">🎉</text>
+  <text x="64" y="356" fill="#0F172A" font-size="13" font-weight="600">Libur 17 Agustus 2026</text>
+  <text x="64" y="376" fill="#64748B" font-size="12">Cuti bersama tgl 18-19 Agustus telah diumumkan</text>
+  <text x="64" y="392" fill="#94A3B8" font-size="11">2 hari lalu</text>
+
+  <!-- Quick actions -->
+  <text x="24" y="440" fill="#334155" font-size="14" font-weight="600">Aksi Cepat</text>
+
+  <g>
+    <rect x="16" y="452" width="112" height="112" rx="16" fill="#FFFFFF" stroke="#E2E8F0"/>
+    <text x="72" y="500" font-size="28" text-anchor="middle">🌴</text>
+    <text x="72" y="536" fill="#334155" font-size="12" font-weight="600" text-anchor="middle">Cuti</text>
+    <text x="72" y="552" fill="#94A3B8" font-size="10" text-anchor="middle">Sisa 7 hari</text>
+  </g>
+  <g>
+    <rect x="139" y="452" width="112" height="112" rx="16" fill="#FFFFFF" stroke="#E2E8F0"/>
+    <text x="195" y="500" font-size="28" text-anchor="middle">⏱️</text>
+    <text x="195" y="536" fill="#334155" font-size="12" font-weight="600" text-anchor="middle">Lembur</text>
+  </g>
+  <g>
+    <rect x="262" y="452" width="112" height="112" rx="16" fill="#FFFFFF" stroke="#E2E8F0"/>
+    <text x="318" y="500" font-size="28" text-anchor="middle">🧾</text>
+    <text x="318" y="536" fill="#334155" font-size="12" font-weight="600" text-anchor="middle">Reimburse</text>
+  </g>
+  <g>
+    <rect x="16" y="576" width="112" height="112" rx="16" fill="#FFFFFF" stroke="#E2E8F0"/>
+    <text x="72" y="624" font-size="28" text-anchor="middle">💰</text>
+    <text x="72" y="660" fill="#334155" font-size="12" font-weight="600" text-anchor="middle">Slip Gaji</text>
+    <circle cx="100" cy="592" r="8" fill="#EF4444"/>
+    <text x="100" y="595" fill="#FFF" font-size="9" text-anchor="middle" font-weight="700">1</text>
+  </g>
+  <g>
+    <rect x="139" y="576" width="112" height="112" rx="16" fill="#FFFFFF" stroke="#E2E8F0"/>
+    <text x="195" y="624" font-size="28" text-anchor="middle">💳</text>
+    <text x="195" y="660" fill="#334155" font-size="12" font-weight="600" text-anchor="middle">Pinjaman</text>
+  </g>
+  <g>
+    <rect x="262" y="576" width="112" height="112" rx="16" fill="#FFFFFF" stroke="#E2E8F0"/>
+    <text x="318" y="624" font-size="28" text-anchor="middle">🤖</text>
+    <text x="318" y="660" fill="#334155" font-size="12" font-weight="600" text-anchor="middle">AI Bantuan</text>
+  </g>
+
+  <!-- Bottom nav -->
+  <rect x="0" y="760" width="390" height="84" fill="#FFFFFF" stroke="#E2E8F0"/>
+  <g font-size="10" fill="#94A3B8">
+    <text x="39" y="800" font-size="22" text-anchor="middle">🏠</text>
+    <text x="39" y="820" text-anchor="middle" fill="#5B4FE6" font-weight="600">Beranda</text>
+
+    <text x="117" y="800" font-size="22" text-anchor="middle">⏰</text>
+    <text x="117" y="820" text-anchor="middle">Absen</text>
+
+    <text x="195" y="800" font-size="22" text-anchor="middle">💼</text>
+    <text x="195" y="820" text-anchor="middle">Modul</text>
+
+    <text x="273" y="800" font-size="22" text-anchor="middle">🔔</text>
+    <text x="273" y="820" text-anchor="middle">Notif</text>
+
+    <text x="351" y="800" font-size="22" text-anchor="middle">👤</text>
+    <text x="351" y="820" text-anchor="middle">Profil</text>
+  </g>
+</svg>

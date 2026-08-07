@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 390 844" font-family="Inter, sans-serif">
+  <rect width="390" height="844" fill="#F8FAFC"/>
+
+  <!-- Status bar -->
+  <rect x="0" y="0" width="390" height="44" fill="#FFFFFF"/>
+  <text x="24" y="28" fill="#0F172A" font-size="13" font-weight="600">09:42</text>
+
+  <!-- App bar -->
+  <rect x="0" y="44" width="390" height="60" fill="#FFFFFF" stroke="#E2E8F0"/>
+  <text x="24" y="82" fill="#0F172A" font-size="22">‹</text>
+  <text x="195" y="82" fill="#0F172A" font-size="17" font-weight="600" text-anchor="middle">Slip Gaji Juli 2026</text>
+  <text x="366" y="82" fill="#5B4FE6" font-size="14" font-weight="600" text-anchor="end">⇩</text>
+
+  <!-- Net paid hero -->
+  <rect x="16" y="120" width="358" height="140" rx="20" fill="#5B4FE6"/>
+  <text x="40" y="156" fill="#D9D2FD" font-size="12" font-weight="600">NET DITERIMA</text>
+  <text x="40" y="204" fill="#FFFFFF" font-size="32" font-weight="700">Rp 9.505.000</text>
+  <text x="40" y="230" fill="#EEEBFE" font-size="12">Ditransfer ke BCA ****1234 · 25 Juli 2026</text>
+
+  <!-- Earnings section -->
+  <text x="24" y="292" fill="#0F172A" font-size="14" font-weight="700">PENDAPATAN</text>
+
+  <rect x="16" y="304" width="358" height="180" rx="12" fill="#FFFFFF" stroke="#E2E8F0"/>
+  <g font-size="13">
+    <text x="32" y="332" fill="#475569">Gaji Pokok</text>
+    <text x="358" y="332" fill="#0F172A" font-weight="600" text-anchor="end">Rp 8.000.000</text>
+
+    <text x="32" y="360" fill="#475569">Tunjangan Jabatan</text>
+    <text x="358" y="360" fill="#0F172A" font-weight="600" text-anchor="end">Rp 1.500.000</text>
+
+    <text x="32" y="388" fill="#475569">Tunjangan Transport</text>
+    <text x="358" y="388" fill="#0F172A" font-weight="600" text-anchor="end">Rp   500.000</text>
+
+    <text x="32" y="416" fill="#475569">Lembur (5j)</text>
+    <text x="358" y="416" fill="#0F172A" font-weight="600" text-anchor="end">Rp   750.000</text>
+
+    <line x1="32" y1="436" x2="358" y2="436" stroke="#E2E8F0"/>
+    <text x="32" y="464" fill="#0F172A" font-weight="700">Total Bruto</text>
+    <text x="358" y="464" fill="#0F172A" font-weight="700" text-anchor="end">Rp 10.750.000</text>
+  </g>
+
+  <!-- Deductions -->
+  <text x="24" y="516" fill="#0F172A" font-size="14" font-weight="700">POTONGAN</text>
+
+  <rect x="16" y="528" width="358" height="180" rx="12" fill="#FFFFFF" stroke="#E2E8F0"/>
+  <g font-size="13">
+    <text x="32" y="556" fill="#DC2626">BPJS Kesehatan (1%)</text>
+    <text x="358" y="556" fill="#DC2626" text-anchor="end">Rp    80.000</text>
+
+    <text x="32" y="584" fill="#DC2626">BPJS JHT (2%)</text>
+    <text x="358" y="584" fill="#DC2626" text-anchor="end">Rp   160.000</text>
+
+    <text x="32" y="612" fill="#DC2626">BPJS JP (1%)</text>
+    <text x="358" y="612" fill="#DC2626" text-anchor="end">Rp    80.000</text>
+
+    <text x="32" y="640" fill="#DC2626">PPh 21 (TER Kategori B)</text>
+    <text x="358" y="640" fill="#DC2626" text-anchor="end">Rp   425.000</text>
+
+    <text x="32" y="668" fill="#DC2626">Angsuran Pinjaman</text>
+    <text x="358" y="668" fill="#DC2626" text-anchor="end">Rp   500.000</text>
+
+    <line x1="32" y1="688" x2="358" y2="688" stroke="#E2E8F0"/>
+    <text x="32" y="702" fill="#DC2626" font-weight="700">Total Potongan</text>
+    <text x="358" y="702" fill="#DC2626" font-weight="700" text-anchor="end">Rp 1.245.000</text>
+  </g>
+
+  <!-- Action row -->
+  <rect x="16" y="732" width="170" height="52" rx="12" fill="#FFFFFF" stroke="#5B4FE6"/>
+  <text x="101" y="765" fill="#5B4FE6" font-size="14" font-weight="600" text-anchor="middle">🤖 Tanya AI</text>
+
+  <rect x="204" y="732" width="170" height="52" rx="12" fill="#5B4FE6"/>
+  <text x="289" y="765" fill="#FFFFFF" font-size="14" font-weight="600" text-anchor="middle">Bagikan PDF</text>
+</svg>
