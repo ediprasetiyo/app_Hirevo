@@ -4,13 +4,11 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.UUID;
-import org.hibernate.HibernateException;
-import org.hibernate.MultiTenancyStrategy;
+import javax.sql.DataSource;
 import org.hibernate.engine.jdbc.connections.spi.MultiTenantConnectionProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.datasource.DataSourceUtils;
 import org.springframework.stereotype.Component;
-import javax.sql.DataSource;
 
 /**
  * Sets {@code SET LOCAL app.current_tenant_id} on every acquired JDBC connection

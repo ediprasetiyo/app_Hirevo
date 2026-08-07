@@ -20,6 +20,16 @@
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-validation</artifactId>
     </dependency>
+    <!--
+      GlobalExceptionHandler catches Spring Security's AuthenticationException +
+      AccessDeniedException so unauthorized/forbidden responses share the same
+      RFC 7807 shape as business errors. Depend on just spring-security-core
+      (no servlet/web pull-in) to keep this lib framework-light.
+    -->
+    <dependency>
+      <groupId>org.springframework.security</groupId>
+      <artifactId>spring-security-core</artifactId>
+    </dependency>
     <dependency>
       <groupId>org.projectlombok</groupId>
       <artifactId>lombok</artifactId>
