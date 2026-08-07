@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <groupId>com.hirevo</groupId>
+    <artifactId>hirevo-backend</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <relativePath>../../pom.xml</relativePath>
+  </parent>
+
+  <artifactId>hirevo-messaging</artifactId>
+  <name>Hirevo Messaging (Kafka topics, event envelope, outbox helpers)</name>
+
+  <dependencies>
+    <dependency>
+      <groupId>com.hirevo</groupId>
+      <artifactId>hirevo-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.kafka</groupId>
+      <artifactId>spring-kafka</artifactId>
+    </dependency>
+  </dependencies>
+</project>

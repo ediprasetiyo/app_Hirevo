@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.27.xsd">
+
+  <include file="db/changelog/000-schemas-and-extensions.xml"/>
+  <include file="db/changelog/001-tenants.xml"/>
+  <include file="db/changelog/002-users-roles.xml"/>
+  <include file="db/changelog/003-mfa.xml"/>
+  <include file="db/changelog/004-devices-refresh-tokens.xml"/>
+  <include file="db/changelog/005-rls-policies.xml"/>
+  <include file="db/changelog/seed/001-system-roles-permissions.xml"/>
+
+</databaseChangeLog>

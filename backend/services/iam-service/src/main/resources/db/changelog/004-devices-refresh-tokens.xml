@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.27.xsd">
+
+  <changeSet id="004-trusted-devices" author="hirevo">
+    <createTable tableName="trusted_devices" schemaName="iam">
+      <column name="id" type="uuid" defaultValueComputed="gen_random_uuid()">
+        <constraints primaryKey="true"/>
+      </column>
+      <column name="tenant_id" type="uuid"><constraints nullable="false"/></column>
+      <column name="user_id" type="uuid"><constraints nullable="false"/></column>
+      <column name="device_fingerprint" type="varchar(255)"><constraints nullable="false"/></column>
+      <column name="device_name" type="varchar(100)"/>
+      <column name="platform" type="varchar(20)"/>
+      <column name="os_version" type="varchar(50)"/>
+      <column name="app_version" type="varchar(50)"/>
+      <column name="push_token" type="varchar(500)"/>
+      <column name="push_token_provider" type="varchar(20)"/>
+      <column name="last_ip" type="inet"/>
+      <column name="last_geo_country" type="varchar(2)"/>
+      <column name="last_geo_city" type="varchar(100)"/>
+      <column name="trust_level" type="varchar(20)" defaultValue="new"><constraints nullable="false"/></column>
+      <column name="is_root_jailbroken" type="boolean"/>
+      <column name="enrolled_at" type="timestamptz" defaultValueComputed="now()"><constraints nullable="false"/></column>
+      <column name="last_active_at" type="timestamptz"/>
+      <column name="revoked_at" type="timestamptz"/>
+      <column name="revoked_reason" type="varchar(50)"/>
+    </createTable>
+    <addUniqueConstraint schemaName="iam" tableName="trusted_devices"
+        columnNames="user_id, device_fingerprint" constraintName="uk_devices_user_fingerprint"/>
+    <sql>CREATE INDEX idx_trusted_user_active ON iam.trusted_devices(user_id) WHERE revoked_at IS NULL;</sql>
+    <sql>ALTER TABLE iam.trusted_devices ADD CONSTRAINT devices_platform_check
+         CHECK (platform IN ('android','ios','web','desktop'));</sql>
+    <sql>ALTER TABLE iam.trusted_devices ADD CONSTRAINT devices_trust_check
+         CHECK (trust_level IN ('trusted','new','suspicious','compromised'));</sql>
+    <addForeignKeyConstraint baseTableSchemaName="iam" baseTableName="trusted_devices"
+        baseColumnNames="user_id"
+        referencedTableSchemaName="iam" referencedTableName="users"
+        referencedColumnNames="id" onDelete="CASCADE"
+        constraintName="fk_devices_user"/>
+  </changeSet>
+
+  <changeSet id="004-login-attempts" author="hirevo">
+    <createTable tableName="login_attempts" schemaName="iam">
+      <column name="id" type="bigserial"><constraints primaryKey="true"/></column>
+      <column name="tenant_id" type="uuid"/>
+      <column name="email_attempted" type="varchar(255)"/>
+      <column name="user_id" type="uuid"/>
+      <column name="ip_address" type="inet"><constraints nullable="false"/></column>
+      <column name="user_agent" type="text"/>
+      <column name="success" type="boolean"><constraints nullable="false"/></column>
+      <column name="failure_reason" type="varchar(50)"/>
+      <column name="mfa_required" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+      <column name="mfa_success" type="boolean"/>
+      <column name="device_fingerprint" type="varchar(255)"/>
+      <column name="created_at" type="timestamptz" defaultValueComputed="now()"><constraints nullable="false"/></column>
+    </createTable>
+    <createIndex tableName="login_attempts" schemaName="iam" indexName="idx_login_email_time">
+      <column name="email_attempted"/>
+      <column name="created_at" descending="true"/>
+    </createIndex>
+    <createIndex tableName="login_attempts" schemaName="iam" indexName="idx_login_ip_time">
+      <column name="ip_address"/>
+      <column name="created_at" descending="true"/>
+    </createIndex>
+  </changeSet>
+
+</databaseChangeLog>

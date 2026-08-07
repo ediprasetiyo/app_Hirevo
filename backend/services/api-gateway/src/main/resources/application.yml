@@ -1,0 +1,56 @@
+spring:
+  application:
+    name: api-gateway
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+  cloud:
+    gateway:
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowed-origins:
+              - https://*.hirevo.id
+              - http://localhost:3000
+            allowed-methods: [GET, POST, PUT, PATCH, DELETE, OPTIONS]
+            allowed-headers: '*'
+            exposed-headers: [X-Request-ID, X-RateLimit-Remaining]
+            allow-credentials: true
+      routes:
+        - id: iam-service
+          uri: ${IAM_SERVICE_URI:http://localhost:8081}
+          predicates:
+            - Path=/v1/auth/**,/v1/tenants/**,/v1/me,/v1/mfa/**,/v1/devices/**,/v1/roles/**,/v1/permissions/**
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 60
+                redis-rate-limiter.burstCapacity: 120
+
+        - id: employee-service
+          uri: ${EMPLOYEE_SERVICE_URI:http://localhost:8082}
+          predicates:
+            - Path=/v1/employees/**,/v1/contracts/**,/v1/orgs/**,/v1/orgchart/**
+
+        - id: attendance-service
+          uri: ${ATTENDANCE_SERVICE_URI:http://localhost:8083}
+          predicates:
+            - Path=/v1/attendance/**,/v1/work-locations/**,/v1/shifts/**,/v1/overtime-requests/**
+
+        - id: payroll-service
+          uri: ${PAYROLL_SERVICE_URI:http://localhost:8086}
+          predicates:
+            - Path=/v1/payroll/**
+
+server:
+  port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+  metrics:
+    tags:
+      application: ${spring.application.name}

@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+  <modelVersion>4.0.0</modelVersion>
+  <parent>
+    <groupId>com.hirevo</groupId>
+    <artifactId>hirevo-backend</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <relativePath>../../pom.xml</relativePath>
+  </parent>
+
+  <artifactId>hirevo-audit</artifactId>
+  <name>Hirevo Audit (annotation + Kafka producer)</name>
+
+  <dependencies>
+    <dependency>
+      <groupId>com.hirevo</groupId>
+      <artifactId>hirevo-core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.hirevo</groupId>
+      <artifactId>hirevo-tenant</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.hirevo</groupId>
+      <artifactId>hirevo-security</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.boot</groupId>
+      <artifactId>spring-boot-starter-aop</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.springframework.kafka</groupId>
+      <artifactId>spring-kafka</artifactId>
+    </dependency>
+  </dependencies>
+</project>

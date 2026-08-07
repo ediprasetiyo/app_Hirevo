@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.27.xsd">
+
+  <changeSet id="001-tenants" author="hirevo">
+    <createTable tableName="tenants" schemaName="tenant">
+      <column name="id" type="uuid" defaultValueComputed="gen_random_uuid()">
+        <constraints primaryKey="true" nullable="false"/>
+      </column>
+      <column name="name" type="varchar(255)"><constraints nullable="false"/></column>
+      <column name="subdomain" type="varchar(63)"><constraints nullable="false" unique="true"/></column>
+      <column name="custom_domain" type="varchar(255)"/>
+      <column name="plan" type="varchar(20)" defaultValue="free"><constraints nullable="false"/></column>
+      <column name="status" type="varchar(20)" defaultValue="trial"><constraints nullable="false"/></column>
+      <column name="trial_ends_at" type="date"/>
+      <column name="billing_email" type="varchar(255)"/>
+      <column name="npwp" type="varchar(25)"/>
+      <column name="address" type="text"/>
+      <column name="logo_url" type="text"/>
+      <column name="settings" type="jsonb" defaultValueComputed="'{}'::jsonb"/>
+      <column name="created_at" type="timestamptz" defaultValueComputed="now()"><constraints nullable="false"/></column>
+      <column name="updated_at" type="timestamptz" defaultValueComputed="now()"><constraints nullable="false"/></column>
+      <column name="deleted_at" type="timestamptz"/>
+    </createTable>
+
+    <sql>ALTER TABLE tenant.tenants ADD CONSTRAINT tenants_plan_check
+         CHECK (plan IN ('free','starter','growth','pro','enterprise'));</sql>
+    <sql>ALTER TABLE tenant.tenants ADD CONSTRAINT tenants_status_check
+         CHECK (status IN ('trial','active','suspended','churned'));</sql>
+
+    <createIndex tableName="tenants" schemaName="tenant" indexName="idx_tenants_status">
+      <column name="status"/>
+    </createIndex>
+  </changeSet>
+
+</databaseChangeLog>

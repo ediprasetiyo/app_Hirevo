@@ -1,0 +1,11 @@
+hirevo:
+  security:
+    jwt:
+      hmac-secret: test-hmac-secret-for-integration-tests-only-min-32-chars-please!!!
+    field-encryption:
+      key-base64: qeYqCEsBGqK9wCk8jFvXsK9lF4B0kR9wUwB3wKt5S1s=
+
+logging:
+  level:
+    root: WARN
+    com.hirevo: INFO
