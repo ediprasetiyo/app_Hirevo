@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.27.xsd">
+
+  <changeSet id="002-employees" author="hirevo">
+    <sql>
+      CREATE TABLE employee.employees (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id UUID NOT NULL,
+        user_id UUID UNIQUE,
+        employee_no VARCHAR(50) NOT NULL,
+        full_name VARCHAR(255) NOT NULL,
+        nickname VARCHAR(100),
+        nik_encrypted BYTEA,
+        npwp_encrypted BYTEA,
+        passport_no VARCHAR(25),
+        date_of_birth DATE,
+        place_of_birth VARCHAR(100),
+        gender VARCHAR(10) CHECK (gender IN ('male','female')),
+        marital_status VARCHAR(20) CHECK (marital_status IN ('single','married','divorced','widowed')),
+        religion VARCHAR(20),
+        blood_type VARCHAR(3),
+        nationality VARCHAR(50) DEFAULT 'Indonesia',
+        personal_email VARCHAR(255),
+        phone VARCHAR(20),
+        whatsapp VARCHAR(20),
+        address TEXT,
+        city_code VARCHAR(10),
+        province_code VARCHAR(10),
+        postal_code VARCHAR(10),
+        photo_url TEXT,
+        manager_id UUID REFERENCES employee.employees(id),
+        hire_date DATE NOT NULL,
+        resign_date DATE,
+        resign_reason TEXT,
+        status VARCHAR(20) NOT NULL DEFAULT 'active'
+          CHECK (status IN ('active','probation','resigned','terminated','retired')),
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        deleted_at TIMESTAMPTZ,
+        UNIQUE (tenant_id, employee_no)
+      );
+      CREATE INDEX idx_employees_tenant_status ON employee.employees(tenant_id, status)
+        WHERE deleted_at IS NULL;
+      CREATE INDEX idx_employees_manager ON employee.employees(manager_id);
+      CREATE INDEX idx_employees_name_trgm ON employee.employees USING gin (full_name gin_trgm_ops);
+    </sql>
+  </changeSet>
+
+  <changeSet id="002-employment-contracts" author="hirevo">
+    <sql>
+      CREATE TABLE employee.employment_contracts (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id UUID NOT NULL,
+        employee_id UUID NOT NULL REFERENCES employee.employees(id) ON DELETE CASCADE,
+        company_id UUID NOT NULL REFERENCES employee.companies(id),
+        branch_id UUID REFERENCES employee.branches(id),
+        position_id UUID REFERENCES employee.positions(id),
+        contract_no VARCHAR(50),
+        contract_type VARCHAR(20) NOT NULL
+          CHECK (contract_type IN ('pkwt','pkwtt','magang','harian_lepas','outsource','part_time')),
+        start_date DATE NOT NULL,
+        end_date DATE,
+        probation_until DATE,
+        base_salary NUMERIC(18,2) NOT NULL,
+        work_arrangement VARCHAR(20)
+          CHECK (work_arrangement IN ('onsite','remote','hybrid')),
+        status VARCHAR(20) NOT NULL DEFAULT 'active'
+          CHECK (status IN ('active','expired','terminated','renewed')),
+        document_url TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX idx_contracts_emp_status ON employee.employment_contracts(employee_id, status);
+    </sql>
+  </changeSet>
+
+</databaseChangeLog>

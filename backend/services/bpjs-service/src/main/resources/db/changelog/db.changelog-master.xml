@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.27.xsd">
+
+  <changeSet id="bpjs-000" author="hirevo">
+    <sql>CREATE EXTENSION IF NOT EXISTS pgcrypto;</sql>
+    <sql>CREATE SCHEMA IF NOT EXISTS bpjs;</sql>
+  </changeSet>
+
+  <changeSet id="bpjs-001-programs-rates" author="hirevo">
+    <sql>
+      CREATE TABLE bpjs.bpjs_programs (
+        id SERIAL PRIMARY KEY,
+        code VARCHAR(20) NOT NULL UNIQUE,
+        name VARCHAR(100) NOT NULL,
+        authority VARCHAR(20) NOT NULL
+      );
+      INSERT INTO bpjs.bpjs_programs (code, name, authority) VALUES
+        ('KES', 'BPJS Kesehatan',                    'kesehatan'),
+        ('JHT', 'Jaminan Hari Tua',                  'ketenagakerjaan'),
+        ('JP',  'Jaminan Pensiun',                   'ketenagakerjaan'),
+        ('JKK', 'Jaminan Kecelakaan Kerja',          'ketenagakerjaan'),
+        ('JKM', 'Jaminan Kematian',                  'ketenagakerjaan');
+
+      CREATE TABLE bpjs.bpjs_rates (
+        id SERIAL PRIMARY KEY,
+        bpjs_program_id INT NOT NULL REFERENCES bpjs.bpjs_programs(id),
+        industry_risk VARCHAR(20),
+        employee_rate_percent NUMERIC(6,4) NOT NULL DEFAULT 0,
+        employer_rate_percent NUMERIC(6,4) NOT NULL DEFAULT 0,
+        wage_cap NUMERIC(18,2),
+        wage_floor NUMERIC(18,2),
+        effective_from DATE NOT NULL,
+        effective_to DATE
+      );
+
+      -- Effective rates 2026 (per Perpres 64/2020 for KES, PP 84/2013 for JHT,
+      -- PP 45/2015 & Kepmen for JP cap, PP 44/2015 for JKK/JKM)
+      INSERT INTO bpjs.bpjs_rates
+        (bpjs_program_id, industry_risk, employee_rate_percent, employer_rate_percent, wage_cap, effective_from)
+      SELECT p.id, NULL, 0.01, 0.04, 12000000, '2024-01-01' FROM bpjs.bpjs_programs p WHERE p.code='KES';
+
+      INSERT INTO bpjs.bpjs_rates
+        (bpjs_program_id, industry_risk, employee_rate_percent, employer_rate_percent, wage_cap, effective_from)
+      SELECT p.id, NULL, 0.02, 0.037, NULL, '2015-07-01' FROM bpjs.bpjs_programs p WHERE p.code='JHT';
+
+      INSERT INTO bpjs.bpjs_rates
+        (bpjs_program_id, industry_risk, employee_rate_percent, employer_rate_percent, wage_cap, effective_from)
+      SELECT p.id, NULL, 0.01, 0.02, 10042300, '2026-03-01' FROM bpjs.bpjs_programs p WHERE p.code='JP';
+
+      -- JKK: 5 risk tiers per PP 44/2015
+      INSERT INTO bpjs.bpjs_rates
+        (bpjs_program_id, industry_risk, employee_rate_percent, employer_rate_percent, wage_cap, effective_from)
+      SELECT p.id, tier, 0, rate, NULL, '2015-07-01'
+      FROM bpjs.bpjs_programs p
+      CROSS JOIN (VALUES
+        ('very_low', 0.0024),
+        ('low',      0.0054),
+        ('medium',   0.0089),
+        ('high',     0.0127),
+        ('very_high',0.0174)
+      ) AS t(tier, rate)
+      WHERE p.code='JKK';
+
+      -- JKM: flat 0.30%
+      INSERT INTO bpjs.bpjs_rates
+        (bpjs_program_id, industry_risk, employee_rate_percent, employer_rate_percent, wage_cap, effective_from)
+      SELECT p.id, NULL, 0, 0.0030, NULL, '2015-07-01' FROM bpjs.bpjs_programs p WHERE p.code='JKM';
+
+      CREATE INDEX idx_rates_prog_effective ON bpjs.bpjs_rates(bpjs_program_id, effective_from);
+    </sql>
+  </changeSet>
+
+  <changeSet id="bpjs-002-profiles-calc" author="hirevo">
+    <sql>
+      CREATE TABLE bpjs.employee_bpjs_profiles (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id UUID NOT NULL,
+        employee_id UUID NOT NULL UNIQUE,
+        bpjs_kesehatan_no_encrypted BYTEA,
+        bpjs_tk_no_encrypted BYTEA,
+        is_kes_enrolled BOOLEAN NOT NULL DEFAULT TRUE,
+        is_jht_enrolled BOOLEAN NOT NULL DEFAULT TRUE,
+        is_jp_enrolled BOOLEAN NOT NULL DEFAULT TRUE,
+        is_jkk_enrolled BOOLEAN NOT NULL DEFAULT TRUE,
+        is_jkm_enrolled BOOLEAN NOT NULL DEFAULT TRUE,
+        kes_family_count INT DEFAULT 0,
+        effective_from DATE NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+
+      CREATE TABLE bpjs.bpjs_calculations (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id UUID NOT NULL,
+        payslip_id UUID NOT NULL,
+        employee_id UUID NOT NULL,
+        bpjs_program_id INT NOT NULL REFERENCES bpjs.bpjs_programs(id),
+        base_wage NUMERIC(18,2) NOT NULL,
+        capped_wage NUMERIC(18,2) NOT NULL,
+        employee_amount NUMERIC(18,2) NOT NULL,
+        employer_amount NUMERIC(18,2) NOT NULL,
+        rate_employee_pct NUMERIC(6,4) NOT NULL,
+        rate_employer_pct NUMERIC(6,4) NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX idx_bpjs_calc_payslip ON bpjs.bpjs_calculations(payslip_id);
+
+      CREATE TABLE bpjs.bpjs_export_files (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id UUID NOT NULL,
+        payroll_run_id UUID NOT NULL,
+        program_type VARCHAR(20),
+        file_url TEXT NOT NULL,
+        total_records INT,
+        total_amount NUMERIC(18,2),
+        generated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+    </sql>
+  </changeSet>
+
+  <changeSet id="bpjs-003-rls" author="hirevo">
+    <sql>
+      DO $$ DECLARE tbl TEXT; BEGIN
+        FOR tbl IN
+          SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+          JOIN pg_attribute a ON a.attrelid=c.oid
+          WHERE n.nspname='bpjs' AND c.relkind='r' AND a.attname='tenant_id' AND NOT a.attisdropped
+        LOOP
+          EXECUTE format('ALTER TABLE bpjs.%I ENABLE ROW LEVEL SECURITY;', tbl);
+          EXECUTE format(
+            'CREATE POLICY tenant_isolation ON bpjs.%I USING (tenant_id = COALESCE(NULLIF(current_setting(''app.current_tenant_id'', true), ''''), ''00000000-0000-0000-0000-000000000000'')::uuid);',
+            tbl);
+        END LOOP;
+      END $$;
+    </sql>
+  </changeSet>
+
+</databaseChangeLog>

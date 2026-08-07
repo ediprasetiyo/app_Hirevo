@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.27.xsd">
+
+  <changeSet id="reim-000" author="hirevo">
+    <sql>CREATE EXTENSION IF NOT EXISTS pgcrypto;</sql>
+    <sql>CREATE SCHEMA IF NOT EXISTS reimburse;</sql>
+  </changeSet>
+
+  <changeSet id="reim-001-categories-requests" author="hirevo">
+    <sql>
+      CREATE TABLE reimburse.reimbursement_categories (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id UUID NOT NULL,
+        code VARCHAR(50) NOT NULL,
+        name VARCHAR(255) NOT NULL,
+        monthly_limit NUMERIC(18,2),
+        yearly_limit NUMERIC(18,2),
+        require_receipt BOOLEAN NOT NULL DEFAULT TRUE,
+        is_taxable BOOLEAN NOT NULL DEFAULT FALSE,
+        gl_account_code VARCHAR(50),
+        is_active BOOLEAN NOT NULL DEFAULT TRUE,
+        UNIQUE (tenant_id, code)
+      );
+
+      CREATE TABLE reimburse.reimbursement_requests (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id UUID NOT NULL,
+        employee_id UUID NOT NULL,
+        request_no VARCHAR(50),
+        title VARCHAR(255) NOT NULL,
+        description TEXT,
+        total_amount NUMERIC(18,2) NOT NULL,
+        currency CHAR(3) DEFAULT 'IDR',
+        status VARCHAR(20) NOT NULL DEFAULT 'draft'
+          CHECK (status IN ('draft','submitted','approved','rejected','paid','cancelled')),
+        approval_instance_id UUID,
+        paid_via_payroll_run_id UUID,
+        paid_at TIMESTAMPTZ,
+        fraud_score INT DEFAULT 0,
+        ocr_confidence NUMERIC(5,4),
+        review_status VARCHAR(20)
+          CHECK (review_status IN ('auto_pass','manual_review','blocked')),
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX idx_rr_emp_status ON reimburse.reimbursement_requests(tenant_id, employee_id, status);
+      CREATE INDEX idx_rr_review ON reimburse.reimbursement_requests(tenant_id, review_status)
+        WHERE review_status='manual_review';
+
+      CREATE TABLE reimburse.reimbursement_items (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id UUID NOT NULL,
+        reimbursement_request_id UUID NOT NULL REFERENCES reimburse.reimbursement_requests(id) ON DELETE CASCADE,
+        category_id UUID NOT NULL REFERENCES reimburse.reimbursement_categories(id),
+        transaction_date DATE NOT NULL,
+        description VARCHAR(255),
+        amount NUMERIC(18,2) NOT NULL,
+        receipt_url TEXT,
+        notes TEXT
+      );
+    </sql>
+  </changeSet>
+
+  <changeSet id="reim-002-ocr-fraud" author="hirevo">
+    <sql>
+      CREATE TABLE reimburse.ocr_jobs (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id UUID NOT NULL,
+        reimbursement_item_id UUID,
+        source_image_s3_key TEXT NOT NULL,
+        provider VARCHAR(20) NOT NULL,
+        status VARCHAR(20) NOT NULL DEFAULT 'queued'
+          CHECK (status IN ('queued','processing','done','failed')),
+        extracted_data JSONB,
+        confidence_scores JSONB,
+        processing_time_ms INT,
+        error TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        completed_at TIMESTAMPTZ
+      );
+
+      -- Perceptual hash + OCR text hash for duplicate receipt detection
+      CREATE TABLE reimburse.receipt_fingerprints (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id UUID NOT NULL,
+        reimbursement_item_id UUID NOT NULL,
+        phash BIGINT NOT NULL,  -- store as signed 64-bit; hamming dist via bit ops
+        ocr_text_hash VARCHAR(64) NOT NULL,
+        vendor VARCHAR(255),
+        receipt_date DATE,
+        amount NUMERIC(18,2),
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX idx_phash_tenant ON reimburse.receipt_fingerprints(tenant_id, phash);
+      CREATE INDEX idx_text_hash ON reimburse.receipt_fingerprints(tenant_id, ocr_text_hash);
+
+      CREATE TABLE reimburse.fraud_signals (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id UUID NOT NULL,
+        reimbursement_request_id UUID NOT NULL,
+        signal_type VARCHAR(50) NOT NULL,
+        severity VARCHAR(20) NOT NULL CHECK (severity IN ('low','medium','high','critical')),
+        details JSONB,
+        detected_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX idx_fraud_req ON reimburse.fraud_signals(reimbursement_request_id);
+    </sql>
+  </changeSet>
+
+  <changeSet id="reim-003-cash-advance" author="hirevo">
+    <sql>
+      CREATE TABLE reimburse.cash_advances (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id UUID NOT NULL,
+        employee_id UUID NOT NULL,
+        request_no VARCHAR(50),
+        purpose TEXT,
+        amount NUMERIC(18,2) NOT NULL,
+        needed_date DATE,
+        status VARCHAR(20) NOT NULL DEFAULT 'pending'
+          CHECK (status IN ('pending','approved','rejected','disbursed','settled','cancelled')),
+        approval_instance_id UUID,
+        disbursed_at TIMESTAMPTZ,
+        settled_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+
+      CREATE TABLE reimburse.cash_advance_settlements (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id UUID NOT NULL,
+        cash_advance_id UUID NOT NULL REFERENCES reimburse.cash_advances(id) ON DELETE CASCADE,
+        reimbursement_request_id UUID,
+        settled_amount NUMERIC(18,2) NOT NULL,
+        refund_amount NUMERIC(18,2) NOT NULL DEFAULT 0,
+        shortfall_amount NUMERIC(18,2) NOT NULL DEFAULT 0,
+        settled_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+    </sql>
+  </changeSet>
+
+  <changeSet id="reim-004-rls" author="hirevo">
+    <sql>
+      DO $$ DECLARE tbl TEXT; BEGIN
+        FOR tbl IN SELECT table_name FROM information_schema.tables WHERE table_schema='reimburse' LOOP
+          EXECUTE format('ALTER TABLE reimburse.%I ENABLE ROW LEVEL SECURITY;', tbl);
+          EXECUTE format(
+            'CREATE POLICY tenant_isolation ON reimburse.%I USING (tenant_id = COALESCE(NULLIF(current_setting(''app.current_tenant_id'', true), ''''), ''00000000-0000-0000-0000-000000000000'')::uuid);',
+            tbl);
+        END LOOP;
+      END $$;
+    </sql>
+  </changeSet>
+
+</databaseChangeLog>

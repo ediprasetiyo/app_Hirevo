@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.27.xsd">
+
+  <changeSet id="004-employee-rls" author="hirevo">
+    <sql>
+      DO $$
+      DECLARE tbl TEXT;
+      BEGIN
+        FOR tbl IN
+          SELECT table_name FROM information_schema.tables
+          WHERE table_schema = 'employee'
+        LOOP
+          EXECUTE format('ALTER TABLE employee.%I ENABLE ROW LEVEL SECURITY;', tbl);
+          EXECUTE format(
+            'CREATE POLICY tenant_isolation ON employee.%I USING (tenant_id = COALESCE(NULLIF(current_setting(''app.current_tenant_id'', true), ''''), ''00000000-0000-0000-0000-000000000000'')::uuid);',
+            tbl);
+        END LOOP;
+      END $$;
+    </sql>
+  </changeSet>
+
+</databaseChangeLog>

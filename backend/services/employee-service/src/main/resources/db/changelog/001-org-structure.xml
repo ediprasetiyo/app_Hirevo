@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.27.xsd">
+
+  <changeSet id="001-companies" author="hirevo">
+    <sql>
+      CREATE TABLE employee.companies (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id UUID NOT NULL,
+        legal_name VARCHAR(255) NOT NULL,
+        brand_name VARCHAR(255),
+        npwp VARCHAR(25),
+        nib VARCHAR(25),
+        industry VARCHAR(100),
+        established_at DATE,
+        address TEXT,
+        city_code VARCHAR(10),
+        province_code VARCHAR(10),
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        deleted_at TIMESTAMPTZ
+      );
+      CREATE INDEX idx_companies_tenant ON employee.companies(tenant_id) WHERE deleted_at IS NULL;
+    </sql>
+  </changeSet>
+
+  <changeSet id="001-branches" author="hirevo">
+    <sql>
+      CREATE TABLE employee.branches (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id UUID NOT NULL,
+        company_id UUID NOT NULL REFERENCES employee.companies(id) ON DELETE CASCADE,
+        code VARCHAR(20),
+        name VARCHAR(255) NOT NULL,
+        address TEXT,
+        city_code VARCHAR(10),
+        province_code VARCHAR(10),
+        is_head_office BOOLEAN NOT NULL DEFAULT FALSE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        deleted_at TIMESTAMPTZ,
+        UNIQUE (company_id, code)
+      );
+      CREATE INDEX idx_branches_tenant ON employee.branches(tenant_id);
+    </sql>
+  </changeSet>
+
+  <changeSet id="001-departments" author="hirevo">
+    <sql>
+      CREATE TABLE employee.departments (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id UUID NOT NULL,
+        branch_id UUID REFERENCES employee.branches(id),
+        parent_id UUID REFERENCES employee.departments(id),
+        code VARCHAR(20),
+        name VARCHAR(255) NOT NULL,
+        head_employee_id UUID,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        deleted_at TIMESTAMPTZ
+      );
+      CREATE INDEX idx_depts_tenant ON employee.departments(tenant_id);
+    </sql>
+  </changeSet>
+
+  <changeSet id="001-job-levels" author="hirevo">
+    <sql>
+      CREATE TABLE employee.job_levels (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id UUID NOT NULL,
+        code VARCHAR(20),
+        name VARCHAR(100) NOT NULL,
+        rank INT NOT NULL,
+        min_salary NUMERIC(18,2),
+        max_salary NUMERIC(18,2),
+        UNIQUE (tenant_id, code)
+      );
+    </sql>
+  </changeSet>
+
+  <changeSet id="001-positions" author="hirevo">
+    <sql>
+      CREATE TABLE employee.positions (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id UUID NOT NULL,
+        department_id UUID REFERENCES employee.departments(id),
+        job_level_id UUID REFERENCES employee.job_levels(id),
+        code VARCHAR(20),
+        name VARCHAR(255) NOT NULL,
+        description TEXT,
+        is_active BOOLEAN NOT NULL DEFAULT TRUE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX idx_positions_tenant_dept ON employee.positions(tenant_id, department_id);
+    </sql>
+  </changeSet>
+
+</databaseChangeLog>

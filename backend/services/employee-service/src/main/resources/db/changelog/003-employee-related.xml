@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.27.xsd">
+
+  <changeSet id="003-families" author="hirevo">
+    <sql>
+      CREATE TABLE employee.employee_families (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id UUID NOT NULL,
+        employee_id UUID NOT NULL REFERENCES employee.employees(id) ON DELETE CASCADE,
+        relationship VARCHAR(20) NOT NULL
+          CHECK (relationship IN ('spouse','child','parent','sibling')),
+        full_name VARCHAR(255) NOT NULL,
+        nik_encrypted BYTEA,
+        date_of_birth DATE,
+        is_dependent BOOLEAN NOT NULL DEFAULT FALSE,
+        is_bpjs_covered BOOLEAN NOT NULL DEFAULT FALSE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+    </sql>
+  </changeSet>
+
+  <changeSet id="003-educations" author="hirevo">
+    <sql>
+      CREATE TABLE employee.employee_educations (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id UUID NOT NULL,
+        employee_id UUID NOT NULL REFERENCES employee.employees(id) ON DELETE CASCADE,
+        level VARCHAR(20),
+        institution VARCHAR(255),
+        major VARCHAR(255),
+        start_year INT,
+        end_year INT,
+        gpa NUMERIC(3,2),
+        certificate_url TEXT
+      );
+    </sql>
+  </changeSet>
+
+  <changeSet id="003-experiences" author="hirevo">
+    <sql>
+      CREATE TABLE employee.employee_experiences (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id UUID NOT NULL,
+        employee_id UUID NOT NULL REFERENCES employee.employees(id) ON DELETE CASCADE,
+        company_name VARCHAR(255),
+        position VARCHAR(255),
+        start_date DATE,
+        end_date DATE,
+        description TEXT
+      );
+    </sql>
+  </changeSet>
+
+  <changeSet id="003-bank-accounts" author="hirevo">
+    <sql>
+      CREATE TABLE employee.employee_bank_accounts (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id UUID NOT NULL,
+        employee_id UUID NOT NULL REFERENCES employee.employees(id) ON DELETE CASCADE,
+        bank_code VARCHAR(10) NOT NULL,
+        account_number_encrypted BYTEA NOT NULL,
+        account_number_last4 VARCHAR(4),
+        account_holder VARCHAR(255) NOT NULL,
+        is_primary BOOLEAN NOT NULL DEFAULT TRUE,
+        purpose VARCHAR(20) DEFAULT 'payroll'
+          CHECK (purpose IN ('payroll','reimbursement','other'))
+      );
+      CREATE INDEX idx_bank_emp ON employee.employee_bank_accounts(employee_id) WHERE is_primary;
+    </sql>
+  </changeSet>
+
+  <changeSet id="003-emergency" author="hirevo">
+    <sql>
+      CREATE TABLE employee.employee_emergency_contacts (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id UUID NOT NULL,
+        employee_id UUID NOT NULL REFERENCES employee.employees(id) ON DELETE CASCADE,
+        full_name VARCHAR(255) NOT NULL,
+        relationship VARCHAR(50),
+        phone VARCHAR(20) NOT NULL,
+        address TEXT
+      );
+    </sql>
+  </changeSet>
+
+  <changeSet id="003-documents" author="hirevo">
+    <sql>
+      CREATE TABLE employee.employee_documents (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id UUID NOT NULL,
+        employee_id UUID NOT NULL REFERENCES employee.employees(id) ON DELETE CASCADE,
+        document_type VARCHAR(50),
+        file_url TEXT NOT NULL,
+        file_size_kb INT,
+        mime_type VARCHAR(50),
+        expires_at DATE,
+        uploaded_by UUID,
+        uploaded_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX idx_docs_emp ON employee.employee_documents(employee_id);
+    </sql>
+  </changeSet>
+
+</databaseChangeLog>

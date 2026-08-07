@@ -1,0 +1,226 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.27.xsd">
+
+  <changeSet id="pay-000" author="hirevo">
+    <sql>CREATE EXTENSION IF NOT EXISTS pgcrypto;</sql>
+    <sql>CREATE SCHEMA IF NOT EXISTS payroll;</sql>
+  </changeSet>
+
+  <changeSet id="pay-001-components" author="hirevo">
+    <sql>
+      CREATE TABLE payroll.salary_components (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id UUID NOT NULL,
+        code VARCHAR(50) NOT NULL,
+        name VARCHAR(255) NOT NULL,
+        category VARCHAR(20) NOT NULL
+          CHECK (category IN ('earning','deduction','benefit','reimbursement','employer_contribution')),
+        type VARCHAR(20) NOT NULL
+          CHECK (type IN ('fixed','variable','formula','attendance_based')),
+        formula TEXT,
+        default_amount NUMERIC(18,2),
+        is_taxable BOOLEAN NOT NULL DEFAULT TRUE,
+        is_bpjs_kes_base BOOLEAN NOT NULL DEFAULT FALSE,
+        is_bpjs_tk_base BOOLEAN NOT NULL DEFAULT FALSE,
+        prorate_on_join_leave BOOLEAN NOT NULL DEFAULT TRUE,
+        prorate_method VARCHAR(20) DEFAULT 'calendar_days'
+          CHECK (prorate_method IN ('calendar_days','working_days','none')),
+        gl_account_code VARCHAR(50),
+        display_order INT DEFAULT 0,
+        is_active BOOLEAN NOT NULL DEFAULT TRUE,
+        UNIQUE (tenant_id, code)
+      );
+
+      CREATE TABLE payroll.employee_salary_structures (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id UUID NOT NULL,
+        employee_id UUID NOT NULL,
+        salary_component_id UUID NOT NULL REFERENCES payroll.salary_components(id),
+        amount NUMERIC(18,2) NOT NULL,
+        effective_from DATE NOT NULL,
+        effective_to DATE,
+        reason VARCHAR(255),
+        approved_by UUID,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX idx_ess_emp_eff ON payroll.employee_salary_structures(employee_id, effective_from);
+    </sql>
+  </changeSet>
+
+  <changeSet id="pay-002-periods-runs" author="hirevo">
+    <sql>
+      CREATE TABLE payroll.payroll_periods (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id UUID NOT NULL,
+        name VARCHAR(100) NOT NULL,
+        period_year INT NOT NULL,
+        period_month INT NOT NULL,
+        start_date DATE NOT NULL,
+        end_date DATE NOT NULL,
+        cutoff_date DATE NOT NULL,
+        pay_date DATE NOT NULL,
+        type VARCHAR(20) NOT NULL DEFAULT 'monthly'
+          CHECK (type IN ('monthly','thr','bonus','adjustment')),
+        status VARCHAR(20) NOT NULL DEFAULT 'open'
+          CHECK (status IN ('open','closed','reopened')),
+        UNIQUE (tenant_id, period_year, period_month, type)
+      );
+
+      CREATE TABLE payroll.payroll_runs (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id UUID NOT NULL,
+        payroll_period_id UUID NOT NULL REFERENCES payroll.payroll_periods(id),
+        company_id UUID NOT NULL,
+        branch_id UUID,
+        run_no VARCHAR(50),
+        status VARCHAR(20) NOT NULL DEFAULT 'draft'
+          CHECK (status IN ('draft','calculating','calculated','reviewed','approved','paid','cancelled','failed')),
+        total_employees INT,
+        total_gross NUMERIC(18,2),
+        total_deductions NUMERIC(18,2),
+        total_pph21 NUMERIC(18,2),
+        total_bpjs_employee NUMERIC(18,2),
+        total_bpjs_employer NUMERIC(18,2),
+        total_net NUMERIC(18,2),
+        calculated_at TIMESTAMPTZ,
+        reviewed_by UUID,
+        reviewed_at TIMESTAMPTZ,
+        approved_by UUID,
+        approved_at TIMESTAMPTZ,
+        paid_at TIMESTAMPTZ,
+        rule_pack_version VARCHAR(20) NOT NULL,
+        notes TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        -- 4-eyes: enforce reviewer != approver at DB level
+        CONSTRAINT four_eyes_check
+          CHECK (approved_by IS NULL OR reviewed_by IS NULL OR approved_by <> reviewed_by)
+      );
+      CREATE INDEX idx_pr_tenant_status ON payroll.payroll_runs(tenant_id, status);
+      CREATE INDEX idx_pr_period ON payroll.payroll_runs(payroll_period_id);
+    </sql>
+  </changeSet>
+
+  <changeSet id="pay-003-payslips" author="hirevo">
+    <sql>
+      CREATE TABLE payroll.payslips (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id UUID NOT NULL,
+        payroll_run_id UUID NOT NULL REFERENCES payroll.payroll_runs(id) ON DELETE CASCADE,
+        employee_id UUID NOT NULL,
+        employment_contract_id UUID,
+        working_days INT,
+        present_days INT,
+        absent_days INT,
+        leave_days NUMERIC(5,2),
+        late_count INT,
+        overtime_hours NUMERIC(6,2),
+        gross_amount NUMERIC(18,2) NOT NULL,
+        taxable_amount NUMERIC(18,2) NOT NULL,
+        pph21_amount NUMERIC(18,2) NOT NULL DEFAULT 0,
+        bpjs_employee NUMERIC(18,2) NOT NULL DEFAULT 0,
+        bpjs_employer NUMERIC(18,2) NOT NULL DEFAULT 0,
+        other_deductions NUMERIC(18,2) NOT NULL DEFAULT 0,
+        net_amount NUMERIC(18,2) NOT NULL,
+        payment_method VARCHAR(20) DEFAULT 'bank_transfer',
+        bank_code VARCHAR(10),
+        bank_account_no_encrypted BYTEA,
+        payslip_pdf_url TEXT,
+        is_sent BOOLEAN NOT NULL DEFAULT FALSE,
+        sent_at TIMESTAMPTZ,
+        ptkp_code VARCHAR(10),
+        ter_category VARCHAR(5),
+        calculation_snapshot JSONB,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE (payroll_run_id, employee_id)
+      );
+      CREATE INDEX idx_payslip_emp_created ON payroll.payslips(employee_id, created_at DESC);
+
+      CREATE TABLE payroll.payslip_lines (
+        id UUID NOT NULL DEFAULT gen_random_uuid(),
+        tenant_id UUID NOT NULL,
+        payslip_id UUID NOT NULL,
+        salary_component_id UUID NOT NULL REFERENCES payroll.salary_components(id),
+        category VARCHAR(20) NOT NULL,
+        amount NUMERIC(18,2) NOT NULL,
+        quantity NUMERIC(10,2),
+        rate NUMERIC(18,2),
+        notes TEXT,
+        display_order INT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        PRIMARY KEY (id, created_at)
+      ) PARTITION BY RANGE (created_at);
+
+      CREATE TABLE payroll.payslip_lines_2026 PARTITION OF payroll.payslip_lines
+        FOR VALUES FROM ('2026-01-01') TO ('2027-01-01');
+      CREATE TABLE payroll.payslip_lines_2027 PARTITION OF payroll.payslip_lines
+        FOR VALUES FROM ('2027-01-01') TO ('2028-01-01');
+      CREATE INDEX idx_lines_payslip ON payroll.payslip_lines(payslip_id);
+    </sql>
+  </changeSet>
+
+  <changeSet id="pay-004-bank-files" author="hirevo">
+    <sql>
+      CREATE TABLE payroll.bank_payment_files (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id UUID NOT NULL,
+        payroll_run_id UUID NOT NULL REFERENCES payroll.payroll_runs(id) ON DELETE CASCADE,
+        bank_code VARCHAR(10) NOT NULL,
+        format VARCHAR(20) NOT NULL,
+        file_url TEXT,
+        total_amount NUMERIC(18,2) NOT NULL,
+        total_records INT NOT NULL,
+        generated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        generated_by UUID
+      );
+
+      CREATE TABLE payroll.bank_payment_lines (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        bank_payment_file_id UUID NOT NULL REFERENCES payroll.bank_payment_files(id) ON DELETE CASCADE,
+        employee_id UUID NOT NULL,
+        payslip_id UUID NOT NULL,
+        bank_account_no_encrypted BYTEA NOT NULL,
+        amount NUMERIC(18,2) NOT NULL,
+        description VARCHAR(100)
+      );
+      CREATE INDEX idx_bpl_file ON payroll.bank_payment_lines(bank_payment_file_id);
+    </sql>
+  </changeSet>
+
+  <changeSet id="pay-005-outbox" author="hirevo">
+    <sql>
+      CREATE TABLE payroll.outbox_events (
+        id BIGSERIAL PRIMARY KEY,
+        tenant_id UUID NOT NULL,
+        aggregate_type VARCHAR(50) NOT NULL,
+        aggregate_id UUID NOT NULL,
+        event_type VARCHAR(100) NOT NULL,
+        payload JSONB NOT NULL,
+        occurred_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        published BOOLEAN NOT NULL DEFAULT FALSE,
+        published_at TIMESTAMPTZ,
+        attempts INT DEFAULT 0
+      );
+      CREATE INDEX idx_outbox_unpublished ON payroll.outbox_events(occurred_at) WHERE NOT published;
+    </sql>
+  </changeSet>
+
+  <changeSet id="pay-006-rls" author="hirevo">
+    <sql>
+      DO $$ DECLARE tbl TEXT; BEGIN
+        FOR tbl IN SELECT table_name FROM information_schema.tables
+          WHERE table_schema='payroll' AND table_name NOT LIKE '%_20%'
+        LOOP
+          EXECUTE format('ALTER TABLE payroll.%I ENABLE ROW LEVEL SECURITY;', tbl);
+          EXECUTE format(
+            'CREATE POLICY tenant_isolation ON payroll.%I USING (tenant_id = COALESCE(NULLIF(current_setting(''app.current_tenant_id'', true), ''''), ''00000000-0000-0000-0000-000000000000'')::uuid);',
+            tbl);
+        END LOOP;
+      END $$;
+    </sql>
+  </changeSet>
+
+</databaseChangeLog>

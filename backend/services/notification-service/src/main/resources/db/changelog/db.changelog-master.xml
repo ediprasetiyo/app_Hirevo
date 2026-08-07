@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.27.xsd">
+
+  <changeSet id="notif-000" author="hirevo">
+    <sql>CREATE SCHEMA IF NOT EXISTS notif;</sql>
+  </changeSet>
+
+  <changeSet id="notif-001" author="hirevo">
+    <sql>
+      CREATE TABLE notif.notifications (
+        id UUID NOT NULL DEFAULT gen_random_uuid(),
+        tenant_id UUID NOT NULL,
+        user_id UUID NOT NULL,
+        channel VARCHAR(20) NOT NULL
+          CHECK (channel IN ('in_app','email','push','whatsapp','sms')),
+        category VARCHAR(50) NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        body TEXT,
+        payload JSONB,
+        action_url TEXT,
+        read_at TIMESTAMPTZ,
+        sent_at TIMESTAMPTZ,
+        delivery_status VARCHAR(20),
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        PRIMARY KEY (id, created_at)
+      ) PARTITION BY RANGE (created_at);
+
+      CREATE TABLE notif.notifications_2026_07 PARTITION OF notif.notifications
+        FOR VALUES FROM ('2026-07-01') TO ('2026-08-01');
+      CREATE TABLE notif.notifications_2026_08 PARTITION OF notif.notifications
+        FOR VALUES FROM ('2026-08-01') TO ('2026-09-01');
+      CREATE INDEX idx_notif_user_unread
+        ON notif.notifications(tenant_id, user_id, created_at DESC)
+        WHERE read_at IS NULL;
+    </sql>
+  </changeSet>
+
+  <changeSet id="notif-002-rls" author="hirevo">
+    <sql>
+      ALTER TABLE notif.notifications ENABLE ROW LEVEL SECURITY;
+      CREATE POLICY tenant_isolation ON notif.notifications
+        USING (tenant_id = COALESCE(
+          NULLIF(current_setting('app.current_tenant_id', true), ''),
+          '00000000-0000-0000-0000-000000000000'
+        )::uuid);
+    </sql>
+  </changeSet>
+
+</databaseChangeLog>

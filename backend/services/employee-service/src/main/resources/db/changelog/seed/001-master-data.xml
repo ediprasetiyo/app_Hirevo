@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.27.xsd">
+
+  <!--
+    Master data for banks — used by employee bank_accounts + payroll bank files.
+    Codes follow BI SKN/RTGS registry.
+  -->
+  <changeSet id="seed-banks" author="hirevo">
+    <sql>
+      CREATE TABLE IF NOT EXISTS employee.banks (
+        code VARCHAR(10) PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        swift_code VARCHAR(15),
+        is_payroll_supported BOOLEAN DEFAULT FALSE,
+        bank_file_format VARCHAR(20)
+      );
+      INSERT INTO employee.banks (code, name, swift_code, is_payroll_supported, bank_file_format) VALUES
+        ('BCA',      'PT Bank Central Asia Tbk',  'CENAIDJA', TRUE, 'BCA_CSV'),
+        ('BMRI',     'PT Bank Mandiri (Persero)', 'BMRIIDJA', TRUE, 'MANDIRI_TXT'),
+        ('BRI',      'PT Bank Rakyat Indonesia',  'BRINIDJA', TRUE, 'BRI_CSV'),
+        ('BNI',      'PT Bank Negara Indonesia',  'BNINIDJA', TRUE, 'BNI_TXT'),
+        ('CIMB',     'PT Bank CIMB Niaga Tbk',    'BNIAIDJA', TRUE, 'CIMB_XLSX'),
+        ('BSI',      'PT Bank Syariah Indonesia', 'BSMDIDJA', TRUE, 'BSI_CSV'),
+        ('BTN',      'PT Bank Tabungan Negara',   'BTANIDJA', TRUE, 'BTN_CSV'),
+        ('PANIN',    'PT Bank Panin Tbk',         'PINBIDJA', FALSE, NULL),
+        ('MEGA',     'PT Bank Mega Tbk',          'MEGAIDJA', FALSE, NULL),
+        ('DANAMON',  'PT Bank Danamon Tbk',       'BDINIDJA', FALSE, NULL),
+        ('PERMATA',  'PT Bank Permata Tbk',       'BBBAIDJA', FALSE, NULL),
+        ('OCBC',     'PT Bank OCBC NISP Tbk',     'NISPIDJA', FALSE, NULL)
+      ON CONFLICT (code) DO NOTHING;
+    </sql>
+  </changeSet>
+
+  <!-- Indonesia national holidays 2026-2027 (global — nullable tenant_id) -->
+  <changeSet id="seed-holidays-table" author="hirevo">
+    <sql>
+      CREATE TABLE IF NOT EXISTS employee.holidays (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id UUID,
+        holiday_date DATE NOT NULL,
+        name VARCHAR(255) NOT NULL,
+        is_national BOOLEAN NOT NULL DEFAULT TRUE,
+        is_joint_leave BOOLEAN NOT NULL DEFAULT FALSE,
+        UNIQUE (COALESCE(tenant_id,'00000000-0000-0000-0000-000000000000'::uuid), holiday_date, name)
+      );
+    </sql>
+  </changeSet>
+
+  <changeSet id="seed-holidays-2026" author="hirevo">
+    <sql>
+      INSERT INTO employee.holidays (tenant_id, holiday_date, name, is_national, is_joint_leave) VALUES
+        (NULL,'2026-01-01','Tahun Baru Masehi',TRUE,FALSE),
+        (NULL,'2026-02-17','Tahun Baru Imlek',TRUE,FALSE),
+        (NULL,'2026-03-19','Hari Suci Nyepi',TRUE,FALSE),
+        (NULL,'2026-03-20','Cuti Bersama Nyepi',TRUE,TRUE),
+        (NULL,'2026-04-03','Wafat Isa Almasih',TRUE,FALSE),
+        (NULL,'2026-05-01','Hari Buruh',TRUE,FALSE),
+        (NULL,'2026-05-14','Kenaikan Isa Almasih',TRUE,FALSE),
+        (NULL,'2026-05-21','Waisak',TRUE,FALSE),
+        (NULL,'2026-05-20','Idul Fitri 1 Syawal',TRUE,FALSE),
+        (NULL,'2026-05-21','Idul Fitri 2 Syawal',TRUE,FALSE),
+        (NULL,'2026-06-01','Hari Lahir Pancasila',TRUE,FALSE),
+        (NULL,'2026-07-26','Idul Adha',TRUE,FALSE),
+        (NULL,'2026-08-15','Tahun Baru Islam',TRUE,FALSE),
+        (NULL,'2026-08-17','Hari Kemerdekaan RI',TRUE,FALSE),
+        (NULL,'2026-10-24','Maulid Nabi',TRUE,FALSE),
+        (NULL,'2026-12-25','Hari Raya Natal',TRUE,FALSE),
+        (NULL,'2026-12-26','Cuti Bersama Natal',TRUE,TRUE)
+      ON CONFLICT DO NOTHING;
+    </sql>
+  </changeSet>
+
+</databaseChangeLog>

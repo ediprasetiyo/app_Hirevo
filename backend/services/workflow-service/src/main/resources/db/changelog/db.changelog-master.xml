@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.27.xsd">
+
+  <changeSet id="wf-000" author="hirevo">
+    <sql>CREATE EXTENSION IF NOT EXISTS pgcrypto;</sql>
+    <sql>CREATE SCHEMA IF NOT EXISTS workflow;</sql>
+  </changeSet>
+
+  <changeSet id="wf-001-workflows" author="hirevo">
+    <sql>
+      CREATE TABLE workflow.approval_workflows (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id UUID NOT NULL,
+        name VARCHAR(255) NOT NULL,
+        module VARCHAR(50) NOT NULL,
+        trigger_rules JSONB,
+        is_active BOOLEAN NOT NULL DEFAULT TRUE,
+        priority INT DEFAULT 0,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX idx_wf_module_priority ON workflow.approval_workflows(tenant_id, module, priority DESC)
+        WHERE is_active;
+
+      CREATE TABLE workflow.workflow_steps (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id UUID NOT NULL,
+        approval_workflow_id UUID NOT NULL REFERENCES workflow.approval_workflows(id) ON DELETE CASCADE,
+        step_order INT NOT NULL,
+        approver_type VARCHAR(20) NOT NULL
+          CHECK (approver_type IN ('direct_manager','department_head','specific_user','specific_role','position_level')),
+        approver_user_id UUID,
+        approver_role_id UUID,
+        approver_job_level_id UUID,
+        is_mandatory BOOLEAN NOT NULL DEFAULT TRUE,
+        auto_approve_after_hours INT,
+        UNIQUE (approval_workflow_id, step_order)
+      );
+    </sql>
+  </changeSet>
+
+  <changeSet id="wf-002-instances-actions" author="hirevo">
+    <sql>
+      CREATE TABLE workflow.approval_instances (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id UUID NOT NULL,
+        approval_workflow_id UUID NOT NULL REFERENCES workflow.approval_workflows(id),
+        module VARCHAR(50) NOT NULL,
+        reference_id UUID NOT NULL,
+        current_step INT NOT NULL DEFAULT 1,
+        status VARCHAR(20) NOT NULL DEFAULT 'pending'
+          CHECK (status IN ('pending','approved','rejected','cancelled','expired')),
+        initiated_by UUID,
+        initiated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        finalized_at TIMESTAMPTZ
+      );
+      CREATE INDEX idx_wi_ref ON workflow.approval_instances(module, reference_id);
+      CREATE INDEX idx_wi_pending ON workflow.approval_instances(tenant_id, status) WHERE status='pending';
+
+      CREATE TABLE workflow.approval_actions (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id UUID NOT NULL,
+        approval_instance_id UUID NOT NULL REFERENCES workflow.approval_instances(id) ON DELETE CASCADE,
+        step_order INT NOT NULL,
+        actor_user_id UUID NOT NULL,
+        action VARCHAR(20) NOT NULL
+          CHECK (action IN ('approved','rejected','delegated','commented','recalled')),
+        comment TEXT,
+        acted_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+    </sql>
+  </changeSet>
+
+  <changeSet id="wf-003-rls" author="hirevo">
+    <sql>
+      DO $$ DECLARE tbl TEXT; BEGIN
+        FOR tbl IN SELECT table_name FROM information_schema.tables WHERE table_schema='workflow' LOOP
+          EXECUTE format('ALTER TABLE workflow.%I ENABLE ROW LEVEL SECURITY;', tbl);
+          EXECUTE format(
+            'CREATE POLICY tenant_isolation ON workflow.%I USING (tenant_id = COALESCE(NULLIF(current_setting(''app.current_tenant_id'', true), ''''), ''00000000-0000-0000-0000-000000000000'')::uuid);',
+            tbl);
+        END LOOP;
+      END $$;
+    </sql>
+  </changeSet>
+
+</databaseChangeLog>

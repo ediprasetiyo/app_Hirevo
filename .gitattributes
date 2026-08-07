@@ -1,0 +1,17 @@
+# Normalize line endings to LF for all text files (fixes CRLF warnings on Windows).
+* text=auto eol=lf
+
+# Binary files
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.pdf binary
+*.jar binary
+*.zip binary
+*.tar.gz binary
+
+# Force LF for shell/scripts
+*.sh text eol=lf
+mvnw text eol=lf
+gradlew text eol=lf

@@ -1,0 +1,265 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.27.xsd">
+
+  <changeSet id="tax-000" author="hirevo">
+    <sql>CREATE EXTENSION IF NOT EXISTS pgcrypto;</sql>
+    <sql>CREATE SCHEMA IF NOT EXISTS tax;</sql>
+  </changeSet>
+
+  <changeSet id="tax-001-ptkp" author="hirevo">
+    <sql>
+      -- Global reference — no tenant_id, no RLS. Rows versioned by effective_from/to.
+      CREATE TABLE tax.ptkp_statuses (
+        id SERIAL PRIMARY KEY,
+        code VARCHAR(10) NOT NULL,
+        description VARCHAR(100),
+        annual_amount NUMERIC(18,2) NOT NULL,
+        ter_category CHAR(1) NOT NULL CHECK (ter_category IN ('A','B','C')),
+        effective_from DATE NOT NULL,
+        effective_to DATE,
+        UNIQUE (code, effective_from)
+      );
+
+      -- PTKP 2016+ (still current per PMK 101/2016 & PMK 168/2023 confirms categories)
+      INSERT INTO tax.ptkp_statuses (code, description, annual_amount, ter_category, effective_from) VALUES
+        ('TK/0','Tidak Kawin, tanpa tanggungan',     54000000,'A','2016-01-01'),
+        ('TK/1','Tidak Kawin, 1 tanggungan',         58500000,'A','2016-01-01'),
+        ('TK/2','Tidak Kawin, 2 tanggungan',         63000000,'B','2016-01-01'),
+        ('TK/3','Tidak Kawin, 3 tanggungan',         67500000,'B','2016-01-01'),
+        ('K/0', 'Kawin, tanpa tanggungan',           58500000,'A','2016-01-01'),
+        ('K/1', 'Kawin, 1 tanggungan',               63000000,'B','2016-01-01'),
+        ('K/2', 'Kawin, 2 tanggungan',               67500000,'B','2016-01-01'),
+        ('K/3', 'Kawin, 3 tanggungan',               72000000,'C','2016-01-01'),
+        ('K/I/0','Kawin, penghasilan istri digabung',112500000,'A','2016-01-01'),
+        ('K/I/1','K/I dengan 1 tanggungan',          117000000,'B','2016-01-01'),
+        ('K/I/2','K/I dengan 2 tanggungan',          121500000,'B','2016-01-01'),
+        ('K/I/3','K/I dengan 3 tanggungan',          126000000,'C','2016-01-01');
+    </sql>
+  </changeSet>
+
+  <changeSet id="tax-002-ter-brackets" author="hirevo">
+    <sql>
+      -- PMK 168/2023 TER Bulanan (effective 2024-01-01)
+      CREATE TABLE tax.tax_brackets_ter (
+        id SERIAL PRIMARY KEY,
+        ter_category CHAR(1) NOT NULL CHECK (ter_category IN ('A','B','C')),
+        bracket_from NUMERIC(18,2) NOT NULL,
+        bracket_to NUMERIC(18,2),
+        rate_percent NUMERIC(6,4) NOT NULL,
+        effective_from DATE NOT NULL,
+        effective_to DATE
+      );
+
+      -- TER Kategori A (PTKP TK/0, TK/1, K/0)
+      INSERT INTO tax.tax_brackets_ter (ter_category, bracket_from, bracket_to, rate_percent, effective_from) VALUES
+        ('A',           0,   5400000, 0.0000, '2024-01-01'),
+        ('A',     5400001,   5650000, 0.0025, '2024-01-01'),
+        ('A',     5650001,   5950000, 0.0050, '2024-01-01'),
+        ('A',     5950001,   6300000, 0.0075, '2024-01-01'),
+        ('A',     6300001,   6750000, 0.0100, '2024-01-01'),
+        ('A',     6750001,   7500000, 0.0125, '2024-01-01'),
+        ('A',     7500001,   8550000, 0.0150, '2024-01-01'),
+        ('A',     8550001,   9650000, 0.0175, '2024-01-01'),
+        ('A',     9650001,  10050000, 0.0200, '2024-01-01'),
+        ('A',    10050001,  10350000, 0.0225, '2024-01-01'),
+        ('A',    10350001,  10700000, 0.0250, '2024-01-01'),
+        ('A',    10700001,  11050000, 0.0300, '2024-01-01'),
+        ('A',    11050001,  11600000, 0.0350, '2024-01-01'),
+        ('A',    11600001,  12500000, 0.0400, '2024-01-01'),
+        ('A',    12500001,  13750000, 0.0500, '2024-01-01'),
+        ('A',    13750001,  15100000, 0.0600, '2024-01-01'),
+        ('A',    15100001,  16950000, 0.0700, '2024-01-01'),
+        ('A',    16950001,  19750000, 0.0800, '2024-01-01'),
+        ('A',    19750001,  24150000, 0.0900, '2024-01-01'),
+        ('A',    24150001,  26450000, 0.1000, '2024-01-01'),
+        ('A',    26450001,  28000000, 0.1100, '2024-01-01'),
+        ('A',    28000001,  30050000, 0.1200, '2024-01-01'),
+        ('A',    30050001,  32400000, 0.1300, '2024-01-01'),
+        ('A',    32400001,  35400000, 0.1400, '2024-01-01'),
+        ('A',    35400001,  39100000, 0.1500, '2024-01-01'),
+        ('A',    39100001,  43850000, 0.1600, '2024-01-01'),
+        ('A',    43850001,  47800000, 0.1700, '2024-01-01'),
+        ('A',    47800001,  51400000, 0.1800, '2024-01-01'),
+        ('A',    51400001,  56300000, 0.1900, '2024-01-01'),
+        ('A',    56300001,  62200000, 0.2000, '2024-01-01'),
+        ('A',    62200001,  68600000, 0.2100, '2024-01-01'),
+        ('A',    68600001,  77500000, 0.2200, '2024-01-01'),
+        ('A',    77500001,  89000000, 0.2300, '2024-01-01'),
+        ('A',    89000001, 103000000, 0.2400, '2024-01-01'),
+        ('A',   103000001, 125000000, 0.2500, '2024-01-01'),
+        ('A',   125000001, 157000000, 0.2600, '2024-01-01'),
+        ('A',   157000001, 206000000, 0.2700, '2024-01-01'),
+        ('A',   206000001, 337000000, 0.2800, '2024-01-01'),
+        ('A',   337000001, 454000000, 0.2900, '2024-01-01'),
+        ('A',   454000001, 550000000, 0.3000, '2024-01-01'),
+        ('A',   550000001, 695000000, 0.3100, '2024-01-01'),
+        ('A',   695000001, 910000000, 0.3200, '2024-01-01'),
+        ('A',   910000001, 1400000000,0.3300, '2024-01-01'),
+        ('A',  1400000001, NULL,      0.3400, '2024-01-01');
+
+      -- TER Kategori B (PTKP TK/2, TK/3, K/1, K/2) — abbreviated seed; full spec loaded by rule-pack.
+      INSERT INTO tax.tax_brackets_ter (ter_category, bracket_from, bracket_to, rate_percent, effective_from) VALUES
+        ('B',           0,   6200000, 0.0000, '2024-01-01'),
+        ('B',     6200001,   6500000, 0.0025, '2024-01-01'),
+        ('B',     6500001,   6850000, 0.0050, '2024-01-01'),
+        ('B',     6850001,   7300000, 0.0075, '2024-01-01'),
+        ('B',     7300001,   9200000, 0.0100, '2024-01-01'),
+        ('B',     9200001,  10750000, 0.0150, '2024-01-01'),
+        ('B',    10750001,  11250000, 0.0200, '2024-01-01'),
+        ('B',    11250001,  11600000, 0.0250, '2024-01-01'),
+        ('B',    11600001,  12600000, 0.0300, '2024-01-01'),
+        ('B',    12600001,  13600000, 0.0400, '2024-01-01'),
+        ('B',    13600001,  14950000, 0.0500, '2024-01-01'),
+        ('B',    14950001,  16400000, 0.0600, '2024-01-01'),
+        ('B',    16400001,  18450000, 0.0700, '2024-01-01'),
+        ('B',    18450001,  21850000, 0.0800, '2024-01-01'),
+        ('B',    21850001,  26000000, 0.0900, '2024-01-01'),
+        ('B',    26000001,  27700000, 0.1000, '2024-01-01'),
+        ('B',    27700001,  29350000, 0.1100, '2024-01-01'),
+        ('B',    29350001,  31450000, 0.1200, '2024-01-01'),
+        ('B',    31450001,  33950000, 0.1300, '2024-01-01'),
+        ('B',    33950001,  37100000, 0.1400, '2024-01-01'),
+        ('B',    37100001,  41100000, 0.1500, '2024-01-01'),
+        ('B',    41100001, 1400000000, 0.1600, '2024-01-01'),
+        ('B',  1400000001,      NULL, 0.3400, '2024-01-01');
+
+      -- TER Kategori C (PTKP K/3) — abbreviated
+      INSERT INTO tax.tax_brackets_ter (ter_category, bracket_from, bracket_to, rate_percent, effective_from) VALUES
+        ('C',           0,   6600000, 0.0000, '2024-01-01'),
+        ('C',     6600001,   6950000, 0.0025, '2024-01-01'),
+        ('C',     6950001,   7350000, 0.0050, '2024-01-01'),
+        ('C',     7350001,   7800000, 0.0075, '2024-01-01'),
+        ('C',     7800001,   8850000, 0.0100, '2024-01-01'),
+        ('C',     8850001,   9800000, 0.0125, '2024-01-01'),
+        ('C',     9800001,  10950000, 0.0150, '2024-01-01'),
+        ('C',    10950001,  11200000, 0.0175, '2024-01-01'),
+        ('C',    11200001,  12050000, 0.0200, '2024-01-01'),
+        ('C',    12050001,  12950000, 0.0300, '2024-01-01'),
+        ('C',    12950001,  14150000, 0.0400, '2024-01-01'),
+        ('C',    14150001,  15550000, 0.0500, '2024-01-01'),
+        ('C',    15550001,  17050000, 0.0600, '2024-01-01'),
+        ('C',    17050001,  19500000, 0.0700, '2024-01-01'),
+        ('C',    19500001,  22700000, 0.0800, '2024-01-01'),
+        ('C',    22700001,  26600000, 0.0900, '2024-01-01'),
+        ('C',    26600001,  28100000, 0.1000, '2024-01-01'),
+        ('C',    28100001,  30100000, 0.1100, '2024-01-01'),
+        ('C',    30100001,  32600000, 0.1200, '2024-01-01'),
+        ('C',    32600001, 1400000000, 0.1400, '2024-01-01'),
+        ('C',  1400000001,      NULL, 0.3400, '2024-01-01');
+
+      CREATE INDEX idx_ter_cat_range ON tax.tax_brackets_ter(ter_category, bracket_from, bracket_to);
+    </sql>
+  </changeSet>
+
+  <changeSet id="tax-003-annual-brackets" author="hirevo">
+    <sql>
+      -- UU HPP 2021 — annual progressive brackets (used for Desember reconciliation & resign)
+      CREATE TABLE tax.tax_brackets_annual (
+        id SERIAL PRIMARY KEY,
+        bracket_from NUMERIC(18,2) NOT NULL,
+        bracket_to NUMERIC(18,2),
+        rate_percent NUMERIC(6,4) NOT NULL,
+        effective_from DATE NOT NULL,
+        effective_to DATE
+      );
+      INSERT INTO tax.tax_brackets_annual (bracket_from, bracket_to, rate_percent, effective_from) VALUES
+        (0,          60000000, 0.05, '2022-01-01'),
+        (60000001,  250000000, 0.15, '2022-01-01'),
+        (250000001, 500000000, 0.25, '2022-01-01'),
+        (500000001, 5000000000, 0.30, '2022-01-01'),
+        (5000000001, NULL,     0.35, '2022-01-01');
+    </sql>
+  </changeSet>
+
+  <changeSet id="tax-004-profiles-calculations" author="hirevo">
+    <sql>
+      CREATE TABLE tax.employee_tax_profiles (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id UUID NOT NULL,
+        employee_id UUID NOT NULL UNIQUE,
+        ptkp_code VARCHAR(10) NOT NULL,
+        npwp_encrypted BYTEA,
+        has_npwp BOOLEAN NOT NULL DEFAULT TRUE,
+        tax_method VARCHAR(20) NOT NULL DEFAULT 'gross'
+          CHECK (tax_method IN ('gross','gross_up','net')),
+        is_expatriate BOOLEAN NOT NULL DEFAULT FALSE,
+        tax_office_code VARCHAR(10),
+        effective_from DATE NOT NULL,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+
+      CREATE TABLE tax.tax_calculations (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id UUID NOT NULL,
+        payslip_id UUID NOT NULL UNIQUE,
+        employee_id UUID NOT NULL,
+        period_year INT NOT NULL,
+        period_month INT NOT NULL,
+        calculation_type VARCHAR(20) NOT NULL
+          CHECK (calculation_type IN ('ter_monthly','annual_december','annual_resign','bonus','thr')),
+        gross_taxable NUMERIC(18,2) NOT NULL,
+        ptkp_code VARCHAR(10),
+        ter_category CHAR(1),
+        ter_rate_percent NUMERIC(6,4),
+        annual_gross NUMERIC(18,2),
+        jabatan_deduction NUMERIC(18,2),
+        pension_deduction NUMERIC(18,2),
+        ptkp_amount NUMERIC(18,2),
+        pkp NUMERIC(18,2),
+        annual_pph21 NUMERIC(18,2),
+        ytd_pph21_paid NUMERIC(18,2),
+        pph21_amount NUMERIC(18,2) NOT NULL,
+        rule_pack_version VARCHAR(20) NOT NULL,
+        calculation_detail JSONB,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX idx_tc_emp_period ON tax.tax_calculations(employee_id, period_year, period_month);
+    </sql>
+  </changeSet>
+
+  <changeSet id="tax-005-bukti-potong" author="hirevo">
+    <sql>
+      CREATE TABLE tax.bukti_potong_1721a1 (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id UUID NOT NULL,
+        company_id UUID NOT NULL,
+        employee_id UUID NOT NULL,
+        tax_year INT NOT NULL,
+        bp_number VARCHAR(50) NOT NULL,
+        total_gross NUMERIC(18,2) NOT NULL,
+        total_pph21 NUMERIC(18,2) NOT NULL,
+        ptkp_code VARCHAR(10),
+        is_final BOOLEAN NOT NULL DEFAULT FALSE,
+        pdf_url TEXT,
+        ebupot_xml_url TEXT,
+        issued_at TIMESTAMPTZ,
+        issued_by UUID,
+        UNIQUE (company_id, employee_id, tax_year)
+      );
+    </sql>
+  </changeSet>
+
+  <changeSet id="tax-006-rls" author="hirevo">
+    <sql>
+      -- RLS only on tenant-scoped tables; reference tables (ptkp_statuses, tax_brackets_*) are global.
+      DO $$ DECLARE tbl TEXT; BEGIN
+        FOR tbl IN
+          SELECT c.relname
+          FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
+          JOIN pg_attribute a ON a.attrelid=c.oid
+          WHERE n.nspname='tax' AND c.relkind='r' AND a.attname='tenant_id' AND NOT a.attisdropped
+        LOOP
+          EXECUTE format('ALTER TABLE tax.%I ENABLE ROW LEVEL SECURITY;', tbl);
+          EXECUTE format(
+            'CREATE POLICY tenant_isolation ON tax.%I USING (tenant_id = COALESCE(NULLIF(current_setting(''app.current_tenant_id'', true), ''''), ''00000000-0000-0000-0000-000000000000'')::uuid);',
+            tbl);
+        END LOOP;
+      END $$;
+    </sql>
+  </changeSet>
+
+</databaseChangeLog>

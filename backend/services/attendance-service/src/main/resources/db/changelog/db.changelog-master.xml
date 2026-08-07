@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.27.xsd">
+
+  <changeSet id="att-000-schema" author="hirevo">
+    <sql>CREATE EXTENSION IF NOT EXISTS pgcrypto;</sql>
+    <sql>CREATE SCHEMA IF NOT EXISTS attendance;</sql>
+  </changeSet>
+
+  <changeSet id="att-001-work-locations" author="hirevo">
+    <sql>
+      CREATE TABLE attendance.work_locations (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id UUID NOT NULL,
+        branch_id UUID,
+        name VARCHAR(255) NOT NULL,
+        address TEXT,
+        latitude NUMERIC(10,7) NOT NULL,
+        longitude NUMERIC(10,7) NOT NULL,
+        radius_meters INT NOT NULL DEFAULT 100,
+        is_active BOOLEAN NOT NULL DEFAULT TRUE
+      );
+      CREATE INDEX idx_worklocs_tenant ON attendance.work_locations(tenant_id) WHERE is_active;
+    </sql>
+  </changeSet>
+
+  <changeSet id="att-002-schedules-shifts" author="hirevo">
+    <sql>
+      CREATE TABLE attendance.work_schedules (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id UUID NOT NULL,
+        name VARCHAR(100) NOT NULL,
+        description TEXT,
+        is_active BOOLEAN NOT NULL DEFAULT TRUE
+      );
+      CREATE TABLE attendance.shifts (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id UUID NOT NULL,
+        work_schedule_id UUID NOT NULL REFERENCES attendance.work_schedules(id) ON DELETE CASCADE,
+        name VARCHAR(50) NOT NULL,
+        start_time TIME NOT NULL,
+        end_time TIME NOT NULL,
+        break_minutes INT NOT NULL DEFAULT 60,
+        is_night_shift BOOLEAN NOT NULL DEFAULT FALSE,
+        late_tolerance_minutes INT NOT NULL DEFAULT 15,
+        color_hex VARCHAR(7)
+      );
+      CREATE TABLE attendance.shift_assignments (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id UUID NOT NULL,
+        employee_id UUID NOT NULL,
+        shift_id UUID NOT NULL REFERENCES attendance.shifts(id),
+        work_date DATE NOT NULL,
+        is_day_off BOOLEAN NOT NULL DEFAULT FALSE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE (employee_id, work_date)
+      );
+      CREATE INDEX idx_shift_assign_date ON attendance.shift_assignments(tenant_id, work_date);
+    </sql>
+  </changeSet>
+
+  <changeSet id="att-003-attendance-logs" author="hirevo">
+    <sql>
+      -- Parent table (partitioned by work_date monthly)
+      CREATE TABLE attendance.attendance_logs (
+        id UUID NOT NULL DEFAULT gen_random_uuid(),
+        tenant_id UUID NOT NULL,
+        employee_id UUID NOT NULL,
+        shift_id UUID,
+        work_location_id UUID REFERENCES attendance.work_locations(id),
+        work_date DATE NOT NULL,
+        clock_in_at TIMESTAMPTZ,
+        clock_out_at TIMESTAMPTZ,
+        lat_in NUMERIC(10,7),
+        lng_in NUMERIC(10,7),
+        lat_out NUMERIC(10,7),
+        lng_out NUMERIC(10,7),
+        gps_accuracy_meters NUMERIC(6,2),
+        is_mock_location BOOLEAN DEFAULT FALSE,
+        selfie_in_url TEXT,
+        selfie_out_url TEXT,
+        source_in VARCHAR(20) CHECK (source_in IN ('mobile','web','whatsapp','fingerprint','manual')),
+        source_out VARCHAR(20) CHECK (source_out IN ('mobile','web','whatsapp','fingerprint','manual')),
+        device_id UUID,
+        ip_address INET,
+        ip_geo_country VARCHAR(2),
+        notes_in TEXT,
+        notes_out TEXT,
+        late_minutes INT DEFAULT 0,
+        early_leave_minutes INT DEFAULT 0,
+        worked_minutes INT,
+        status VARCHAR(20) NOT NULL DEFAULT 'present'
+          CHECK (status IN ('present','late','early_leave','absent','leave','holiday','wfh','sick','permit','pending_review')),
+        face_match_log_id UUID,
+        liveness_verified BOOLEAN DEFAULT FALSE,
+        fraud_score INT DEFAULT 0,
+        fraud_signals JSONB,
+        is_anomaly BOOLEAN NOT NULL DEFAULT FALSE,
+        anomaly_reason TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        PRIMARY KEY (id, work_date)
+      ) PARTITION BY RANGE (work_date);
+
+      -- Sample partitions (pg_partman will auto-create the rest)
+      CREATE TABLE attendance.attendance_logs_2026_07 PARTITION OF attendance.attendance_logs
+        FOR VALUES FROM ('2026-07-01') TO ('2026-08-01');
+      CREATE TABLE attendance.attendance_logs_2026_08 PARTITION OF attendance.attendance_logs
+        FOR VALUES FROM ('2026-08-01') TO ('2026-09-01');
+      CREATE TABLE attendance.attendance_logs_2026_09 PARTITION OF attendance.attendance_logs
+        FOR VALUES FROM ('2026-09-01') TO ('2026-10-01');
+      CREATE TABLE attendance.attendance_logs_2026_10 PARTITION OF attendance.attendance_logs
+        FOR VALUES FROM ('2026-10-01') TO ('2026-11-01');
+      CREATE TABLE attendance.attendance_logs_2026_11 PARTITION OF attendance.attendance_logs
+        FOR VALUES FROM ('2026-11-01') TO ('2026-12-01');
+      CREATE TABLE attendance.attendance_logs_2026_12 PARTITION OF attendance.attendance_logs
+        FOR VALUES FROM ('2026-12-01') TO ('2027-01-01');
+
+      CREATE INDEX idx_attendance_emp_date
+        ON attendance.attendance_logs(tenant_id, employee_id, work_date);
+      CREATE INDEX idx_attendance_fraud
+        ON attendance.attendance_logs(tenant_id, fraud_score)
+        WHERE fraud_score > 40;
+    </sql>
+  </changeSet>
+
+  <changeSet id="att-004-overtime" author="hirevo">
+    <sql>
+      CREATE TABLE attendance.overtime_requests (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id UUID NOT NULL,
+        employee_id UUID NOT NULL,
+        work_date DATE NOT NULL,
+        start_time TIMESTAMPTZ NOT NULL,
+        end_time TIMESTAMPTZ NOT NULL,
+        duration_minutes INT NOT NULL,
+        reason TEXT,
+        status VARCHAR(20) NOT NULL DEFAULT 'pending'
+          CHECK (status IN ('pending','approved','rejected','cancelled')),
+        approval_instance_id UUID,
+        is_holiday BOOLEAN DEFAULT FALSE,
+        calculated_amount NUMERIC(18,2),
+        rate_used JSONB,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX idx_overtime_emp_status ON attendance.overtime_requests(tenant_id, employee_id, status);
+    </sql>
+  </changeSet>
+
+  <changeSet id="att-005-face-recognition" author="hirevo">
+    <sql>
+      CREATE TABLE attendance.face_enrollments (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id UUID NOT NULL,
+        employee_id UUID NOT NULL,
+        enrollment_status VARCHAR(20) NOT NULL DEFAULT 'pending'
+          CHECK (enrollment_status IN ('pending','active','revoked')),
+        embedding_model VARCHAR(50) NOT NULL,
+        embedding_version INT NOT NULL,
+        embedding_vector BYTEA NOT NULL,
+        embedding_norm NUMERIC(8,6),
+        quality_score NUMERIC(5,4),
+        reference_image_s3_key TEXT,
+        reference_purge_at TIMESTAMPTZ,
+        enrolled_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        enrolled_by UUID,
+        revoked_at TIMESTAMPTZ,
+        UNIQUE (employee_id, embedding_version)
+      );
+      CREATE INDEX idx_face_employee ON attendance.face_enrollments(employee_id)
+        WHERE enrollment_status='active';
+
+      CREATE TABLE attendance.face_match_logs (
+        id UUID NOT NULL DEFAULT gen_random_uuid(),
+        tenant_id UUID NOT NULL,
+        attendance_log_id UUID,
+        employee_id UUID NOT NULL,
+        candidate_embedding BYTEA,
+        cosine_similarity NUMERIC(6,5),
+        liveness_score NUMERIC(5,4),
+        is_match BOOLEAN NOT NULL,
+        reject_reason VARCHAR(50),
+        device_id UUID,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        PRIMARY KEY (id, created_at)
+      ) PARTITION BY RANGE (created_at);
+
+      CREATE TABLE attendance.face_match_logs_2026_07 PARTITION OF attendance.face_match_logs
+        FOR VALUES FROM ('2026-07-01') TO ('2026-08-01');
+      CREATE TABLE attendance.face_match_logs_2026_08 PARTITION OF attendance.face_match_logs
+        FOR VALUES FROM ('2026-08-01') TO ('2026-09-01');
+    </sql>
+  </changeSet>
+
+  <changeSet id="att-006-rls" author="hirevo">
+    <sql>
+      DO $$ DECLARE tbl TEXT; BEGIN
+        FOR tbl IN SELECT table_name FROM information_schema.tables
+          WHERE table_schema='attendance'
+            AND table_name NOT LIKE '%_20%' -- skip child partitions (inherit from parent)
+        LOOP
+          EXECUTE format('ALTER TABLE attendance.%I ENABLE ROW LEVEL SECURITY;', tbl);
+          EXECUTE format(
+            'CREATE POLICY tenant_isolation ON attendance.%I USING (tenant_id = COALESCE(NULLIF(current_setting(''app.current_tenant_id'', true), ''''), ''00000000-0000-0000-0000-000000000000'')::uuid);',
+            tbl);
+        END LOOP;
+      END $$;
+    </sql>
+  </changeSet>
+
+</databaseChangeLog>

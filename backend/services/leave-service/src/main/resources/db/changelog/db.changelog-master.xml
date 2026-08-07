@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.27.xsd">
+
+  <changeSet id="leave-000" author="hirevo">
+    <sql>CREATE EXTENSION IF NOT EXISTS pgcrypto;</sql>
+    <sql>CREATE SCHEMA IF NOT EXISTS leave_mgmt;</sql>
+  </changeSet>
+
+  <changeSet id="leave-001-types-and-balances" author="hirevo">
+    <sql>
+      CREATE TABLE leave_mgmt.leave_types (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id UUID NOT NULL,
+        code VARCHAR(20) NOT NULL,
+        name VARCHAR(100) NOT NULL,
+        is_paid BOOLEAN NOT NULL DEFAULT TRUE,
+        default_days_per_year NUMERIC(5,2),
+        carry_over_max_days NUMERIC(5,2),
+        carry_over_expire_months INT,
+        require_attachment BOOLEAN NOT NULL DEFAULT FALSE,
+        min_notice_days INT DEFAULT 0,
+        max_consecutive_days INT,
+        is_system BOOLEAN NOT NULL DEFAULT FALSE,
+        is_active BOOLEAN NOT NULL DEFAULT TRUE,
+        UNIQUE (tenant_id, code)
+      );
+
+      CREATE TABLE leave_mgmt.leave_balances (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id UUID NOT NULL,
+        employee_id UUID NOT NULL,
+        leave_type_id UUID NOT NULL REFERENCES leave_mgmt.leave_types(id),
+        year INT NOT NULL,
+        initial_balance NUMERIC(5,2) NOT NULL,
+        carry_over NUMERIC(5,2) NOT NULL DEFAULT 0,
+        used NUMERIC(5,2) NOT NULL DEFAULT 0,
+        pending NUMERIC(5,2) NOT NULL DEFAULT 0,
+        remaining NUMERIC(5,2)
+          GENERATED ALWAYS AS (initial_balance + carry_over - used - pending) STORED,
+        UNIQUE (employee_id, leave_type_id, year)
+      );
+      CREATE INDEX idx_bal_emp_year ON leave_mgmt.leave_balances(employee_id, year);
+    </sql>
+  </changeSet>
+
+  <changeSet id="leave-002-requests" author="hirevo">
+    <sql>
+      CREATE TABLE leave_mgmt.leave_requests (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id UUID NOT NULL,
+        employee_id UUID NOT NULL,
+        leave_type_id UUID NOT NULL REFERENCES leave_mgmt.leave_types(id),
+        start_date DATE NOT NULL,
+        end_date DATE NOT NULL,
+        total_days NUMERIC(5,2) NOT NULL,
+        reason TEXT,
+        attachment_url TEXT,
+        status VARCHAR(20) NOT NULL DEFAULT 'pending'
+          CHECK (status IN ('pending','approved','rejected','cancelled')),
+        approval_instance_id UUID,
+        approved_at TIMESTAMPTZ,
+        cancelled_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX idx_leave_emp_date ON leave_mgmt.leave_requests(tenant_id, employee_id, start_date);
+      CREATE INDEX idx_leave_status ON leave_mgmt.leave_requests(tenant_id, status);
+    </sql>
+  </changeSet>
+
+  <changeSet id="leave-003-rls" author="hirevo">
+    <sql>
+      DO $$ DECLARE tbl TEXT; BEGIN
+        FOR tbl IN SELECT table_name FROM information_schema.tables WHERE table_schema='leave_mgmt' LOOP
+          EXECUTE format('ALTER TABLE leave_mgmt.%I ENABLE ROW LEVEL SECURITY;', tbl);
+          EXECUTE format(
+            'CREATE POLICY tenant_isolation ON leave_mgmt.%I USING (tenant_id = COALESCE(NULLIF(current_setting(''app.current_tenant_id'', true), ''''), ''00000000-0000-0000-0000-000000000000'')::uuid);',
+            tbl);
+        END LOOP;
+      END $$;
+    </sql>
+  </changeSet>
+
+  <changeSet id="seed-leave-types-uu13" author="hirevo">
+    <!-- Preset per UU 13/2003 & UU Cipta Kerja. tenant_id NULL = template applied at signup. -->
+    <sql>
+      INSERT INTO leave_mgmt.leave_types
+        (tenant_id, code, name, is_paid, default_days_per_year, carry_over_max_days,
+         carry_over_expire_months, require_attachment, is_system)
+      SELECT NULL, code, name, is_paid, days, carry_max, expire, req_attach, TRUE
+      FROM (VALUES
+        ('annual',      'Cuti Tahunan',                    TRUE,  12, 6,    3,  FALSE),
+        ('sick',        'Cuti Sakit',                      TRUE, 365, 0,    0,  TRUE),
+        ('maternity',   'Cuti Melahirkan',                 TRUE,  90, 0,    0,  TRUE),
+        ('paternity',   'Cuti Suami Menemani Istri',       TRUE,   2, 0,    0,  FALSE),
+        ('marriage',    'Cuti Menikah',                    TRUE,   3, 0,    0,  FALSE),
+        ('bereavement', 'Cuti Duka (Keluarga Inti)',       TRUE,   2, 0,    0,  FALSE),
+        ('religious',   'Cuti Ibadah (Haji/Umrah)',        TRUE,  40, 0,    0,  TRUE),
+        ('menstruation','Cuti Haid (Opsional)',            TRUE,   2, 0,    0,  FALSE),
+        ('unpaid',      'Cuti Tanpa Bayaran',              FALSE,  0, 0,    0,  FALSE),
+        ('permit',      'Izin',                            TRUE,   0, 0,    0,  FALSE),
+        ('wfh',         'Work From Home',                  TRUE,   0, 0,    0,  FALSE)
+      ) AS x(code, name, is_paid, days, carry_max, expire, req_attach);
+    </sql>
+  </changeSet>
+
+</databaseChangeLog>
