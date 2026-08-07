@@ -4,11 +4,9 @@ import com.eatthepath.otp.TimeBasedOneTimePasswordGenerator;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Base64;
 import javax.crypto.spec.SecretKeySpec;
 import org.apache.commons.codec.binary.Base32;
 import org.springframework.stereotype.Service;
@@ -26,11 +24,8 @@ public class TotpService {
   private final TimeBasedOneTimePasswordGenerator totp;
 
   public TotpService() {
-    try {
-      this.totp = new TimeBasedOneTimePasswordGenerator(Duration.ofSeconds(30), 6, ALGORITHM);
-    } catch (NoSuchAlgorithmException e) {
-      throw new IllegalStateException("HmacSHA1 not available", e);
-    }
+    // java-otp 0.4.0 constructor does not throw — HmacSHA1 is guaranteed present in Java 8+.
+    this.totp = new TimeBasedOneTimePasswordGenerator(Duration.ofSeconds(30), 6, ALGORITHM);
   }
 
   /** Generates a fresh Base32-encoded secret (returned to user via QR only, then encrypted). */
