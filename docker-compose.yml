@@ -23,7 +23,10 @@ services:
     image: redis:7-alpine
     container_name: hirevo-redis
     ports:
-      - "6379:6379"
+      # Host port 6380 → container 6379 to avoid clash with any pre-existing
+      # local Redis on 6379. Services connect via REDIS_PORT=6380 from host,
+      # or REDIS_HOST=redis:6379 when running inside the compose network.
+      - "6380:6379"
     command: ["redis-server", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
