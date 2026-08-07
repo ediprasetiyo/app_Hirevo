@@ -1,0 +1,113 @@
+{
+  "$schema": "bpjs-fixture-v1",
+  "rulepack_version": "2026.03",
+  "description": "BPJS 5-program calculations. Wage caps effective 2026: JP Rp 10.042.300, KES Rp 12.000.000, JHT/JKK/JKM tidak cap. Rate: KES 1%+4%, JHT 2%+3.7%, JP 1%+2%, JKK per risk tier, JKM 0.30% employer only.",
+  "cases": [
+    {
+      "id": "BPJS-001",
+      "description": "Gaji Rp 5jt (di bawah cap semua program), industry risk medium",
+      "input": {
+        "period": {"year": 2026, "month": 7},
+        "wage": 5000000,
+        "industry_risk": "medium",
+        "enrolled": {"kes": true, "jht": true, "jp": true, "jkk": true, "jkm": true}
+      },
+      "expected": {
+        "kes":  {"base": 5000000, "capped": 5000000, "employee": 50000,  "employer": 200000},
+        "jht":  {"base": 5000000, "capped": 5000000, "employee": 100000, "employer": 185000},
+        "jp":   {"base": 5000000, "capped": 5000000, "employee": 50000,  "employer": 100000},
+        "jkk":  {"base": 5000000, "capped": 5000000, "employee": 0,      "employer": 44500,
+          "notes": "medium risk 0.89%"},
+        "jkm":  {"base": 5000000, "capped": 5000000, "employee": 0,      "employer": 15000,
+          "notes": "0.30% flat"},
+        "total_employee": 200000,
+        "total_employer": 544500
+      }
+    },
+    {
+      "id": "BPJS-002",
+      "description": "Gaji Rp 15jt — kena cap JP (10.042.300) & KES (12jt)",
+      "input": {
+        "period": {"year": 2026, "month": 7},
+        "wage": 15000000,
+        "industry_risk": "low",
+        "enrolled": {"kes": true, "jht": true, "jp": true, "jkk": true, "jkm": true}
+      },
+      "expected": {
+        "kes":  {"base": 15000000, "capped": 12000000, "employee": 120000,  "employer": 480000},
+        "jht":  {"base": 15000000, "capped": 15000000, "employee": 300000,  "employer": 555000},
+        "jp":   {"base": 15000000, "capped": 10042300, "employee": 100423,  "employer": 200846},
+        "jkk":  {"base": 15000000, "capped": 15000000, "employee": 0,       "employer": 81000,
+          "notes": "low risk 0.54%"},
+        "jkm":  {"base": 15000000, "capped": 15000000, "employee": 0,       "employer": 45000},
+        "total_employee": 520423,
+        "total_employer": 1361846
+      }
+    },
+    {
+      "id": "BPJS-003",
+      "description": "Gaji Rp 50jt (executive) — cap ketat, high risk industry",
+      "input": {
+        "period": {"year": 2026, "month": 7},
+        "wage": 50000000,
+        "industry_risk": "very_high",
+        "enrolled": {"kes": true, "jht": true, "jp": true, "jkk": true, "jkm": true}
+      },
+      "expected": {
+        "kes":  {"base": 50000000, "capped": 12000000, "employee": 120000,   "employer": 480000},
+        "jht":  {"base": 50000000, "capped": 50000000, "employee": 1000000,  "employer": 1850000},
+        "jp":   {"base": 50000000, "capped": 10042300, "employee": 100423,   "employer": 200846},
+        "jkk":  {"base": 50000000, "capped": 50000000, "employee": 0,        "employer": 870000,
+          "notes": "very_high risk 1.74%"},
+        "jkm":  {"base": 50000000, "capped": 50000000, "employee": 0,        "employer": 150000},
+        "total_employee": 1220423,
+        "total_employer": 3550846
+      }
+    },
+    {
+      "id": "BPJS-004",
+      "description": "Employee opt out JP (misalnya WNA) — hanya KES + JHT + JKK + JKM",
+      "input": {
+        "period": {"year": 2026, "month": 7},
+        "wage": 20000000,
+        "industry_risk": "low",
+        "enrolled": {"kes": true, "jht": true, "jp": false, "jkk": true, "jkm": true}
+      },
+      "expected": {
+        "kes":  {"base": 20000000, "capped": 12000000, "employee": 120000,  "employer": 480000},
+        "jht":  {"base": 20000000, "capped": 20000000, "employee": 400000,  "employer": 740000},
+        "jp":   null,
+        "jkk":  {"base": 20000000, "capped": 20000000, "employee": 0,       "employer": 108000},
+        "jkm":  {"base": 20000000, "capped": 20000000, "employee": 0,       "employer": 60000},
+        "total_employee": 520000,
+        "total_employer": 1388000
+      }
+    },
+    {
+      "id": "BPJS-005",
+      "description": "Wage exactly at JP cap (Rp 10.042.300)",
+      "input": {
+        "period": {"year": 2026, "month": 7},
+        "wage": 10042300,
+        "industry_risk": "medium",
+        "enrolled": {"kes": true, "jht": true, "jp": true, "jkk": true, "jkm": true}
+      },
+      "expected": {
+        "jp":   {"base": 10042300, "capped": 10042300, "employee": 100423, "employer": 200846}
+      }
+    },
+    {
+      "id": "BPJS-006",
+      "description": "Wage Rp 10.042.301 (JP cap + 1 rp) — capped tetap Rp 10.042.300",
+      "input": {
+        "period": {"year": 2026, "month": 7},
+        "wage": 10042301,
+        "industry_risk": "medium",
+        "enrolled": {"kes": true, "jht": true, "jp": true, "jkk": true, "jkm": true}
+      },
+      "expected": {
+        "jp":   {"base": 10042301, "capped": 10042300, "employee": 100423, "employer": 200846}
+      }
+    }
+  ]
+}

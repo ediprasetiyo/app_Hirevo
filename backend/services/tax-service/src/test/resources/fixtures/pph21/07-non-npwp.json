@@ -1,0 +1,66 @@
+{
+  "$schema": "pph21-fixture-v1",
+  "rulepack_version": "2024.01",
+  "description": "Karyawan tanpa NPWP. Per PMK 168/2023, mulai 2024 skema TER tidak lagi menerapkan penalty 20% tambahan (karena TER sudah cukup progresif). Namun untuk pertahankan legacy period (pre-2024), engine harus tetap support flag has_npwp=false + regulator_version legacy.",
+  "cases": [
+    {
+      "id": "NPWP-001",
+      "description": "TER 2024 — non-NPWP tidak lagi kena penalty tambahan (sama dengan yang punya NPWP)",
+      "input": {
+        "period": {"year": 2026, "month": 7},
+        "ptkp_code": "TK/0",
+        "has_npwp": false,
+        "tax_method": "gross",
+        "gross_taxable": 8000000,
+        "calculation_type": "ter_monthly"
+      },
+      "expected": {
+        "ter_category": "A",
+        "ter_rate_percent": 0.0175,
+        "pph21_amount": 140000,
+        "calculation_notes": "Sejak PMK 168/2023, non-NPWP TER = NPWP TER. Namun tetap TIDAK BOLEH kredit pajak. Engine mark flag ini di tax_calculations.calculation_detail."
+      }
+    },
+    {
+      "id": "NPWP-002",
+      "description": "Legacy pre-2024 (rulepack_version 2023) — non-NPWP kena penalty 20%",
+      "input": {
+        "period": {"year": 2023, "month": 7},
+        "ptkp_code": "TK/0",
+        "has_npwp": false,
+        "tax_method": "gross",
+        "gross_taxable": 8000000,
+        "calculation_type": "ter_monthly",
+        "rulepack_version": "2016.01"
+      },
+      "expected": {
+        "pph21_amount": 20000,
+        "calculation_notes": "Pre-2024: hitung normal → tambah 20%. Contoh legacy — angka mock; engine legacy tidak dalam scope MVP fixtures. Case ini untuk memastikan engine gracefully reject unsupported rulepack."
+      }
+    },
+    {
+      "id": "NPWP-003",
+      "description": "Annual December non-NPWP — annual calc tidak berbeda dari NPWP (sejak TER 2024)",
+      "input": {
+        "period": {"year": 2026, "month": 12},
+        "ptkp_code": "TK/0",
+        "has_npwp": false,
+        "tax_method": "gross",
+        "gross_taxable": 8000000,
+        "calculation_type": "annual_december",
+        "ytd_gross": 96000000,
+        "ytd_pph21_paid": 1440000
+      },
+      "expected": {
+        "ter_category": "A",
+        "annual_gross": 96000000,
+        "jabatan_deduction": 4800000,
+        "pension_deduction": 0,
+        "ptkp_amount": 54000000,
+        "pkp": 37200000,
+        "annual_pph21": 1860000,
+        "pph21_amount": 420000
+      }
+    }
+  ]
+}

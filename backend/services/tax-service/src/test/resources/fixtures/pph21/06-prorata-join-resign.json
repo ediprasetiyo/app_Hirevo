@@ -1,0 +1,92 @@
+{
+  "$schema": "pph21-fixture-v1",
+  "rulepack_version": "2024.01",
+  "description": "Karyawan masuk / keluar tengah tahun. TER bulanan pakai gross bulan itu apa adanya (tidak prorata gaji). Prorata hanya berdampak di gaji pokok itu sendiri via payroll (bukan tax). Annual_resign berbeda dengan annual_december: pakai actual YTD, PTKP full-year.",
+  "cases": [
+    {
+      "id": "PRO-001",
+      "description": "Karyawan masuk 15 Juli (mid-month), gaji bulanan 8jt, prorata 8jt × 17/31 hari",
+      "input": {
+        "period": {"year": 2026, "month": 7},
+        "ptkp_code": "TK/0", "has_npwp": true, "tax_method": "gross",
+        "gross_taxable": 4387097,
+        "calculation_type": "ter_monthly",
+        "hire_date_this_period": "2026-07-15"
+      },
+      "expected": {"ter_category": "A", "ter_rate_percent": 0.0000, "pph21_amount": 0,
+        "calculation_notes": "Gross 4.39jt di bawah threshold 5.4jt Kategori A → 0%. Perhatikan: TER tidak peduli hari kerja, hanya gross."}
+    },
+    {
+      "id": "PRO-002",
+      "description": "Bulan pertama masuk (Jan) gaji full 8jt — sama dengan case regular",
+      "input": {"period": {"year": 2026, "month": 1}, "ptkp_code": "TK/0", "has_npwp": true,
+        "tax_method": "gross", "gross_taxable": 8000000, "calculation_type": "ter_monthly"},
+      "expected": {"ter_category": "A", "ter_rate_percent": 0.0175, "pph21_amount": 140000}
+    },
+    {
+      "id": "PRO-003",
+      "description": "Karyawan resign 15 Sept — bulan Sept gaji prorata 15/30",
+      "input": {"period": {"year": 2026, "month": 9}, "ptkp_code": "K/0", "has_npwp": true,
+        "tax_method": "gross", "gross_taxable": 5000000, "calculation_type": "ter_monthly",
+        "resign_date_this_period": "2026-09-15"},
+      "expected": {"ter_category": "A", "ter_rate_percent": 0.0000, "pph21_amount": 0,
+        "calculation_notes": "5jt di bawah threshold. Perhitungan annual_resign akan follow separately."}
+    },
+    {
+      "id": "PRO-004",
+      "description": "Annual_resign untuk case PRO-003: YTD 9 bulan × 10jt + prorata bulan terakhir",
+      "input": {
+        "period": {"year": 2026, "month": 9},
+        "ptkp_code": "K/0", "has_npwp": true, "tax_method": "gross",
+        "gross_taxable": 5000000,
+        "calculation_type": "annual_resign",
+        "ytd_gross": 85000000,
+        "ytd_pph21_paid": 750000
+      },
+      "expected": {
+        "ter_category": "A",
+        "annual_gross": 85000000,
+        "jabatan_deduction": 4250000,
+        "pension_deduction": 0,
+        "ptkp_amount": 58500000,
+        "pkp": 22250000,
+        "annual_pph21": 1112500,
+        "pph21_amount": 362500,
+        "calculation_notes": "Annual_resign gunakan PTKP full-year (58.5jt K/0). Biaya jabatan 5%×85=4.25jt. PKP 22.25jt×5%=1.1125jt. YTD 750k → adjustment 362.5k."
+      }
+    },
+    {
+      "id": "PRO-005",
+      "description": "Karyawan pindah dari perusahaan A ke perusahaan B (di tenant sama) — restart YTD di company B",
+      "input": {"period": {"year": 2026, "month": 3}, "ptkp_code": "TK/0", "has_npwp": true,
+        "tax_method": "gross", "gross_taxable": 10000000, "calculation_type": "ter_monthly",
+        "company_change_this_period": true},
+      "expected": {"ter_category": "A", "ter_rate_percent": 0.0200, "pph21_amount": 200000,
+        "calculation_notes": "Di perusahaan baru, YTD reset. Bukti Potong dari perusahaan lama akan dikreditkan saat annual_december."}
+    },
+    {
+      "id": "PRO-006",
+      "description": "Meninggal dunia — final settlement mirip resign",
+      "input": {
+        "period": {"year": 2026, "month": 6},
+        "ptkp_code": "K/2", "has_npwp": true, "tax_method": "gross",
+        "gross_taxable": 12000000,
+        "calculation_type": "annual_resign",
+        "ytd_gross": 72000000,
+        "ytd_pph21_paid": 900000,
+        "resign_reason": "deceased"
+      },
+      "expected": {
+        "ter_category": "B",
+        "annual_gross": 72000000,
+        "jabatan_deduction": 3600000,
+        "pension_deduction": 0,
+        "ptkp_amount": 67500000,
+        "pkp": 900000,
+        "annual_pph21": 45000,
+        "pph21_amount": -855000,
+        "calculation_notes": "K/2 PTKP 67.5jt. Refund 855k → ahli waris."
+      }
+    }
+  ]
+}

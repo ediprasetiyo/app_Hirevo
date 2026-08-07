@@ -1,0 +1,156 @@
+{
+  "$schema": "pph21-fixture-v1",
+  "rulepack_version": "2024.01",
+  "description": "TER Kategori A — PTKP TK/0, TK/1, K/0. Reference: PMK 168/2023, Lampiran I Bagian A. All amounts in IDR.",
+  "cases": [
+    {
+      "id": "TER-A-001",
+      "description": "TK/0, gross 5jt — di bawah threshold zero-rate",
+      "regulation": "PMK 168/2023 Lampiran I.A baris 1",
+      "input": {
+        "period": {"year": 2026, "month": 7},
+        "ptkp_code": "TK/0",
+        "has_npwp": true,
+        "tax_method": "gross",
+        "gross_taxable": 5000000,
+        "calculation_type": "ter_monthly"
+      },
+      "expected": {"ter_category": "A", "ter_rate_percent": 0.0000, "pph21_amount": 0,
+        "calculation_notes": "5jt ≤ 5.4jt threshold → 0%"}
+    },
+    {
+      "id": "TER-A-002",
+      "description": "TK/0, gross 5.4jt — persis batas atas zero-rate",
+      "input": {"period": {"year": 2026, "month": 7}, "ptkp_code": "TK/0", "has_npwp": true,
+        "tax_method": "gross", "gross_taxable": 5400000, "calculation_type": "ter_monthly"},
+      "expected": {"ter_category": "A", "ter_rate_percent": 0.0000, "pph21_amount": 0}
+    },
+    {
+      "id": "TER-A-003",
+      "description": "TK/0, gross 5.5jt — bracket 5.4jt-5.65jt (0.25%)",
+      "input": {"period": {"year": 2026, "month": 7}, "ptkp_code": "TK/0", "has_npwp": true,
+        "tax_method": "gross", "gross_taxable": 5500000, "calculation_type": "ter_monthly"},
+      "expected": {"ter_category": "A", "ter_rate_percent": 0.0025, "pph21_amount": 13750}
+    },
+    {
+      "id": "TER-A-004",
+      "description": "K/0, gross 8jt — bracket 7.5jt-8.55jt (1.5%)",
+      "input": {"period": {"year": 2026, "month": 7}, "ptkp_code": "K/0", "has_npwp": true,
+        "tax_method": "gross", "gross_taxable": 8000000, "calculation_type": "ter_monthly"},
+      "expected": {"ter_category": "A", "ter_rate_percent": 0.0150, "pph21_amount": 120000}
+    },
+    {
+      "id": "TER-A-005",
+      "description": "TK/1, gross 10jt — bracket 9.65jt-10.05jt (2%)",
+      "input": {"period": {"year": 2026, "month": 7}, "ptkp_code": "TK/1", "has_npwp": true,
+        "tax_method": "gross", "gross_taxable": 10000000, "calculation_type": "ter_monthly"},
+      "expected": {"ter_category": "A", "ter_rate_percent": 0.0200, "pph21_amount": 200000}
+    },
+    {
+      "id": "TER-A-006",
+      "description": "TK/0, gross 12.5jt — persis batas atas 4%",
+      "input": {"period": {"year": 2026, "month": 7}, "ptkp_code": "TK/0", "has_npwp": true,
+        "tax_method": "gross", "gross_taxable": 12500000, "calculation_type": "ter_monthly"},
+      "expected": {"ter_category": "A", "ter_rate_percent": 0.0400, "pph21_amount": 500000}
+    },
+    {
+      "id": "TER-A-007",
+      "description": "TK/0, gross 12.5jt + 1 rupiah — pindah ke bracket 5%",
+      "input": {"period": {"year": 2026, "month": 7}, "ptkp_code": "TK/0", "has_npwp": true,
+        "tax_method": "gross", "gross_taxable": 12500001, "calculation_type": "ter_monthly"},
+      "expected": {"ter_category": "A", "ter_rate_percent": 0.0500, "pph21_amount": 625000,
+        "calculation_notes": "Bracket boundary: 12.500.001 masuk 12.5-13.75jt (5%)"}
+    },
+    {
+      "id": "TER-A-008",
+      "description": "K/0, gross 15jt — bracket 13.75jt-15.1jt (6%)",
+      "input": {"period": {"year": 2026, "month": 7}, "ptkp_code": "K/0", "has_npwp": true,
+        "tax_method": "gross", "gross_taxable": 15000000, "calculation_type": "ter_monthly"},
+      "expected": {"ter_category": "A", "ter_rate_percent": 0.0600, "pph21_amount": 900000}
+    },
+    {
+      "id": "TER-A-009",
+      "description": "TK/0, gross 20jt — bracket 19.75jt-24.15jt (9%)",
+      "input": {"period": {"year": 2026, "month": 7}, "ptkp_code": "TK/0", "has_npwp": true,
+        "tax_method": "gross", "gross_taxable": 20000000, "calculation_type": "ter_monthly"},
+      "expected": {"ter_category": "A", "ter_rate_percent": 0.0900, "pph21_amount": 1800000}
+    },
+    {
+      "id": "TER-A-010",
+      "description": "TK/0, gross 30jt",
+      "input": {"period": {"year": 2026, "month": 7}, "ptkp_code": "TK/0", "has_npwp": true,
+        "tax_method": "gross", "gross_taxable": 30000000, "calculation_type": "ter_monthly"},
+      "expected": {"ter_category": "A", "ter_rate_percent": 0.1200, "pph21_amount": 3600000}
+    },
+    {
+      "id": "TER-A-011",
+      "description": "TK/0, gross 50jt",
+      "input": {"period": {"year": 2026, "month": 7}, "ptkp_code": "TK/0", "has_npwp": true,
+        "tax_method": "gross", "gross_taxable": 50000000, "calculation_type": "ter_monthly"},
+      "expected": {"ter_category": "A", "ter_rate_percent": 0.1800, "pph21_amount": 9000000}
+    },
+    {
+      "id": "TER-A-012",
+      "description": "TK/0, gross 100jt — bracket 89jt-103jt (24%)",
+      "input": {"period": {"year": 2026, "month": 7}, "ptkp_code": "TK/0", "has_npwp": true,
+        "tax_method": "gross", "gross_taxable": 100000000, "calculation_type": "ter_monthly"},
+      "expected": {"ter_category": "A", "ter_rate_percent": 0.2400, "pph21_amount": 24000000}
+    },
+    {
+      "id": "TER-A-013",
+      "description": "TK/0, gross 500jt — bracket 454jt-550jt (30%)",
+      "input": {"period": {"year": 2026, "month": 7}, "ptkp_code": "TK/0", "has_npwp": true,
+        "tax_method": "gross", "gross_taxable": 500000000, "calculation_type": "ter_monthly"},
+      "expected": {"ter_category": "A", "ter_rate_percent": 0.3000, "pph21_amount": 150000000}
+    },
+    {
+      "id": "TER-A-014",
+      "description": "TK/0, gross 2 miliar — top bracket 34%",
+      "input": {"period": {"year": 2026, "month": 7}, "ptkp_code": "TK/0", "has_npwp": true,
+        "tax_method": "gross", "gross_taxable": 2000000000, "calculation_type": "ter_monthly"},
+      "expected": {"ter_category": "A", "ter_rate_percent": 0.3400, "pph21_amount": 680000000}
+    },
+    {
+      "id": "TER-A-015",
+      "description": "K/0 (kategori A), gross 6.3jt — bracket 5.95jt-6.3jt (0.75%)",
+      "input": {"period": {"year": 2026, "month": 7}, "ptkp_code": "K/0", "has_npwp": true,
+        "tax_method": "gross", "gross_taxable": 6300000, "calculation_type": "ter_monthly"},
+      "expected": {"ter_category": "A", "ter_rate_percent": 0.0075, "pph21_amount": 47250}
+    },
+    {
+      "id": "TER-A-016",
+      "description": "TK/1, gross 6.75jt — persis batas atas 1% bracket",
+      "input": {"period": {"year": 2026, "month": 7}, "ptkp_code": "TK/1", "has_npwp": true,
+        "tax_method": "gross", "gross_taxable": 6750000, "calculation_type": "ter_monthly"},
+      "expected": {"ter_category": "A", "ter_rate_percent": 0.0100, "pph21_amount": 67500}
+    },
+    {
+      "id": "TER-A-017",
+      "description": "TK/0, gross 0 — no income",
+      "input": {"period": {"year": 2026, "month": 7}, "ptkp_code": "TK/0", "has_npwp": true,
+        "tax_method": "gross", "gross_taxable": 0, "calculation_type": "ter_monthly"},
+      "expected": {"ter_category": "A", "ter_rate_percent": 0.0000, "pph21_amount": 0}
+    },
+    {
+      "id": "TER-A-018",
+      "description": "TK/0, gross 40jt — bracket 39.1jt-43.85jt (16%)",
+      "input": {"period": {"year": 2026, "month": 7}, "ptkp_code": "TK/0", "has_npwp": true,
+        "tax_method": "gross", "gross_taxable": 40000000, "calculation_type": "ter_monthly"},
+      "expected": {"ter_category": "A", "ter_rate_percent": 0.1600, "pph21_amount": 6400000}
+    },
+    {
+      "id": "TER-A-019",
+      "description": "K/0, gross 200jt — bracket 157jt-206jt (27%)",
+      "input": {"period": {"year": 2026, "month": 7}, "ptkp_code": "K/0", "has_npwp": true,
+        "tax_method": "gross", "gross_taxable": 200000000, "calculation_type": "ter_monthly"},
+      "expected": {"ter_category": "A", "ter_rate_percent": 0.2700, "pph21_amount": 54000000}
+    },
+    {
+      "id": "TER-A-020",
+      "description": "TK/1, gross 1.4 miliar — bracket 910jt-1.4M (33%)",
+      "input": {"period": {"year": 2026, "month": 7}, "ptkp_code": "TK/1", "has_npwp": true,
+        "tax_method": "gross", "gross_taxable": 1400000000, "calculation_type": "ter_monthly"},
+      "expected": {"ter_category": "A", "ter_rate_percent": 0.3300, "pph21_amount": 462000000}
+    }
+  ]
+}

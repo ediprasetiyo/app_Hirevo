@@ -1,0 +1,112 @@
+{
+  "$schema": "pph21-fixture-v1",
+  "rulepack_version": "2024.01",
+  "description": "TER Kategori C — PTKP K/3 (kawin, 3 tanggungan). Reference: PMK 168/2023, Lampiran I Bagian C.",
+  "cases": [
+    {
+      "id": "TER-C-001",
+      "description": "K/3, gross 6jt — di bawah threshold (0%)",
+      "input": {"period": {"year": 2026, "month": 7}, "ptkp_code": "K/3", "has_npwp": true,
+        "tax_method": "gross", "gross_taxable": 6000000, "calculation_type": "ter_monthly"},
+      "expected": {"ter_category": "C", "ter_rate_percent": 0.0000, "pph21_amount": 0}
+    },
+    {
+      "id": "TER-C-002",
+      "description": "K/3, gross 6.6jt — persis threshold",
+      "input": {"period": {"year": 2026, "month": 7}, "ptkp_code": "K/3", "has_npwp": true,
+        "tax_method": "gross", "gross_taxable": 6600000, "calculation_type": "ter_monthly"},
+      "expected": {"ter_category": "C", "ter_rate_percent": 0.0000, "pph21_amount": 0}
+    },
+    {
+      "id": "TER-C-003",
+      "description": "K/3, gross 6.95jt — bracket 6.6jt-6.95jt (0.25%)",
+      "input": {"period": {"year": 2026, "month": 7}, "ptkp_code": "K/3", "has_npwp": true,
+        "tax_method": "gross", "gross_taxable": 6950000, "calculation_type": "ter_monthly"},
+      "expected": {"ter_category": "C", "ter_rate_percent": 0.0025, "pph21_amount": 17375}
+    },
+    {
+      "id": "TER-C-004",
+      "description": "K/3, gross 8jt — bracket 7.8jt-8.85jt (1%)",
+      "input": {"period": {"year": 2026, "month": 7}, "ptkp_code": "K/3", "has_npwp": true,
+        "tax_method": "gross", "gross_taxable": 8000000, "calculation_type": "ter_monthly"},
+      "expected": {"ter_category": "C", "ter_rate_percent": 0.0100, "pph21_amount": 80000}
+    },
+    {
+      "id": "TER-C-005",
+      "description": "K/3, gross 10jt — bracket 9.8jt-10.95jt (1.5%)",
+      "input": {"period": {"year": 2026, "month": 7}, "ptkp_code": "K/3", "has_npwp": true,
+        "tax_method": "gross", "gross_taxable": 10000000, "calculation_type": "ter_monthly"},
+      "expected": {"ter_category": "C", "ter_rate_percent": 0.0150, "pph21_amount": 150000}
+    },
+    {
+      "id": "TER-C-006",
+      "description": "K/3, gross 12jt — bracket 11.2jt-12.05jt (2%)",
+      "input": {"period": {"year": 2026, "month": 7}, "ptkp_code": "K/3", "has_npwp": true,
+        "tax_method": "gross", "gross_taxable": 12000000, "calculation_type": "ter_monthly"},
+      "expected": {"ter_category": "C", "ter_rate_percent": 0.0200, "pph21_amount": 240000}
+    },
+    {
+      "id": "TER-C-007",
+      "description": "K/3, gross 15jt — bracket 14.15jt-15.55jt (5%)",
+      "input": {"period": {"year": 2026, "month": 7}, "ptkp_code": "K/3", "has_npwp": true,
+        "tax_method": "gross", "gross_taxable": 15000000, "calculation_type": "ter_monthly"},
+      "expected": {"ter_category": "C", "ter_rate_percent": 0.0500, "pph21_amount": 750000}
+    },
+    {
+      "id": "TER-C-008",
+      "description": "K/3, gross 20jt — bracket 19.5jt-22.7jt (8%)",
+      "input": {"period": {"year": 2026, "month": 7}, "ptkp_code": "K/3", "has_npwp": true,
+        "tax_method": "gross", "gross_taxable": 20000000, "calculation_type": "ter_monthly"},
+      "expected": {"ter_category": "C", "ter_rate_percent": 0.0800, "pph21_amount": 1600000}
+    },
+    {
+      "id": "TER-C-009",
+      "description": "K/3, gross 30jt — bracket 28.1jt-30.1jt (11%)",
+      "input": {"period": {"year": 2026, "month": 7}, "ptkp_code": "K/3", "has_npwp": true,
+        "tax_method": "gross", "gross_taxable": 30000000, "calculation_type": "ter_monthly"},
+      "expected": {"ter_category": "C", "ter_rate_percent": 0.1100, "pph21_amount": 3300000}
+    },
+    {
+      "id": "TER-C-010",
+      "description": "K/3, gross 50jt",
+      "input": {"period": {"year": 2026, "month": 7}, "ptkp_code": "K/3", "has_npwp": true,
+        "tax_method": "gross", "gross_taxable": 50000000, "calculation_type": "ter_monthly"},
+      "expected": {"ter_category": "C", "ter_rate_percent": 0.1400, "pph21_amount": 7000000}
+    },
+    {
+      "id": "TER-C-011",
+      "description": "K/3, gross 100jt",
+      "input": {"period": {"year": 2026, "month": 7}, "ptkp_code": "K/3", "has_npwp": true,
+        "tax_method": "gross", "gross_taxable": 100000000, "calculation_type": "ter_monthly"},
+      "expected": {"ter_category": "C", "ter_rate_percent": 0.1400, "pph21_amount": 14000000}
+    },
+    {
+      "id": "TER-C-012",
+      "description": "K/3, gross 1M",
+      "input": {"period": {"year": 2026, "month": 7}, "ptkp_code": "K/3", "has_npwp": true,
+        "tax_method": "gross", "gross_taxable": 1000000000, "calculation_type": "ter_monthly"},
+      "expected": {"ter_category": "C", "ter_rate_percent": 0.1400, "pph21_amount": 140000000}
+    },
+    {
+      "id": "TER-C-013",
+      "description": "K/3, gross 1.4M — persis boundary sebelum jump",
+      "input": {"period": {"year": 2026, "month": 7}, "ptkp_code": "K/3", "has_npwp": true,
+        "tax_method": "gross", "gross_taxable": 1400000000, "calculation_type": "ter_monthly"},
+      "expected": {"ter_category": "C", "ter_rate_percent": 0.1400, "pph21_amount": 196000000}
+    },
+    {
+      "id": "TER-C-014",
+      "description": "K/3, gross 1.4M + 1 rupiah — jump ke 34%",
+      "input": {"period": {"year": 2026, "month": 7}, "ptkp_code": "K/3", "has_npwp": true,
+        "tax_method": "gross", "gross_taxable": 1400000001, "calculation_type": "ter_monthly"},
+      "expected": {"ter_category": "C", "ter_rate_percent": 0.3400, "pph21_amount": 476000000}
+    },
+    {
+      "id": "TER-C-015",
+      "description": "K/3, gross 8.85jt — persis batas atas 1% bracket",
+      "input": {"period": {"year": 2026, "month": 7}, "ptkp_code": "K/3", "has_npwp": true,
+        "tax_method": "gross", "gross_taxable": 8850000, "calculation_type": "ter_monthly"},
+      "expected": {"ter_category": "C", "ter_rate_percent": 0.0100, "pph21_amount": 88500}
+    }
+  ]
+}

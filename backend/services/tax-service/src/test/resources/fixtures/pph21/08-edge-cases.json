@@ -1,0 +1,86 @@
+{
+  "$schema": "pph21-fixture-v1",
+  "rulepack_version": "2024.01",
+  "description": "Edge cases: floating-point precision, boundary values, unusual inputs. Rounding rule: NUMERIC(18,2) di DB, TER rate NUMERIC(6,4). PPh amount rounded to nearest rupiah (bulat).",
+  "cases": [
+    {
+      "id": "EDGE-001",
+      "description": "Boundary: 5.400.000 vs 5.400.001 — beda rate 0% vs 0.25%",
+      "input": {"period": {"year": 2026, "month": 7}, "ptkp_code": "TK/0", "has_npwp": true,
+        "tax_method": "gross", "gross_taxable": 5400001, "calculation_type": "ter_monthly"},
+      "expected": {"ter_category": "A", "ter_rate_percent": 0.0025, "pph21_amount": 13500,
+        "calculation_notes": "5.400.001 × 0.25% = 13.500,0025 → round nearest = 13.500 (banker's rounding untuk 0.5 tie-break)"}
+    },
+    {
+      "id": "EDGE-002",
+      "description": "Gross negatif (unrealistic tapi harus reject) — expect exception",
+      "input": {"period": {"year": 2026, "month": 7}, "ptkp_code": "TK/0", "has_npwp": true,
+        "tax_method": "gross", "gross_taxable": -1000000, "calculation_type": "ter_monthly"},
+      "expected": {"error": "IllegalArgumentException",
+        "error_message_contains": "gross_taxable must be >= 0"}
+    },
+    {
+      "id": "EDGE-003",
+      "description": "Very small odd number 5.400.007 — round to nearest",
+      "input": {"period": {"year": 2026, "month": 7}, "ptkp_code": "TK/0", "has_npwp": true,
+        "tax_method": "gross", "gross_taxable": 5400007, "calculation_type": "ter_monthly"},
+      "expected": {"ter_category": "A", "ter_rate_percent": 0.0025, "pph21_amount": 13500,
+        "calculation_notes": "5.400.007 × 0.25% = 13.500,0175 → round = 13.500"}
+    },
+    {
+      "id": "EDGE-004",
+      "description": "PTKP code invalid — expect NotFoundException",
+      "input": {"period": {"year": 2026, "month": 7}, "ptkp_code": "XY/99", "has_npwp": true,
+        "tax_method": "gross", "gross_taxable": 8000000, "calculation_type": "ter_monthly"},
+      "expected": {"error": "NotFoundException", "error_message_contains": "PTKP status XY/99"}
+    },
+    {
+      "id": "EDGE-005",
+      "description": "Bulan invalid (13) — expect ValidationException",
+      "input": {"period": {"year": 2026, "month": 13}, "ptkp_code": "TK/0", "has_npwp": true,
+        "tax_method": "gross", "gross_taxable": 8000000, "calculation_type": "ter_monthly"},
+      "expected": {"error": "IllegalArgumentException", "error_message_contains": "month"}
+    },
+    {
+      "id": "EDGE-006",
+      "description": "Rulepack version tidak tersedia untuk tanggal input — expect error",
+      "input": {"period": {"year": 2020, "month": 7}, "ptkp_code": "TK/0", "has_npwp": true,
+        "tax_method": "gross", "gross_taxable": 8000000, "calculation_type": "ter_monthly"},
+      "expected": {"error": "IllegalStateException",
+        "error_message_contains": "No TER bracket effective for 2020-07"}
+    },
+    {
+      "id": "EDGE-007",
+      "description": "Ultra-high 10 miliar/bulan (surealisme) — top bracket",
+      "input": {"period": {"year": 2026, "month": 7}, "ptkp_code": "TK/0", "has_npwp": true,
+        "tax_method": "gross", "gross_taxable": 10000000000, "calculation_type": "ter_monthly"},
+      "expected": {"ter_category": "A", "ter_rate_percent": 0.3400, "pph21_amount": 3400000000}
+    },
+    {
+      "id": "EDGE-008",
+      "description": "Annual gross negatif ytd (koreksi retro) — engine must handle refund flow",
+      "input": {"period": {"year": 2026, "month": 12}, "ptkp_code": "TK/0", "has_npwp": true,
+        "tax_method": "gross", "gross_taxable": 8000000, "calculation_type": "annual_december",
+        "ytd_gross": 96000000, "ytd_pph21_paid": 5000000},
+      "expected": {"ter_category": "A", "annual_gross": 96000000, "jabatan_deduction": 4800000,
+        "pension_deduction": 0, "ptkp_amount": 54000000, "pkp": 37200000,
+        "annual_pph21": 1860000, "pph21_amount": -3140000,
+        "calculation_notes": "YTD overpaid 3.14jt → refund. Negative value legal; downstream handles as credit note."}
+    },
+    {
+      "id": "EDGE-009",
+      "description": "Gross exactly at bracket boundary 12.500.000 — inclusive lower",
+      "input": {"period": {"year": 2026, "month": 7}, "ptkp_code": "TK/0", "has_npwp": true,
+        "tax_method": "gross", "gross_taxable": 12500000, "calculation_type": "ter_monthly"},
+      "expected": {"ter_category": "A", "ter_rate_percent": 0.0400, "pph21_amount": 500000,
+        "calculation_notes": "Bracket 11.6-12.5jt inclusive di-atas, jadi 12.5jt tepat = 4%"}
+    },
+    {
+      "id": "EDGE-010",
+      "description": "Precision: 8.123.456 × 1.75% = 142.160,48 → 142.160",
+      "input": {"period": {"year": 2026, "month": 7}, "ptkp_code": "TK/0", "has_npwp": true,
+        "tax_method": "gross", "gross_taxable": 8123456, "calculation_type": "ter_monthly"},
+      "expected": {"ter_category": "A", "ter_rate_percent": 0.0175, "pph21_amount": 142160}
+    }
+  ]
+}

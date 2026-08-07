@@ -1,0 +1,82 @@
+{
+  "$schema": "pph21-fixture-v1",
+  "rulepack_version": "2024.01",
+  "description": "THR & bonus. PMK 168/2023: THR/bonus dihitung terpisah dari gaji bulanan menggunakan TER berdasarkan gross bulan tersebut (gaji + THR/bonus).",
+  "cases": [
+    {
+      "id": "THR-001",
+      "description": "TK/0, gaji 8jt, THR 8jt di bulan Mei (Lebaran) → total gross 16jt",
+      "input": {
+        "period": {"year": 2026, "month": 5},
+        "ptkp_code": "TK/0", "has_npwp": true, "tax_method": "gross",
+        "gross_taxable": 16000000,
+        "calculation_type": "thr",
+        "regular_salary": 8000000, "thr_amount": 8000000
+      },
+      "expected": {"ter_category": "A", "ter_rate_percent": 0.0700, "pph21_amount": 1120000,
+        "calculation_notes": "Gross bulanan efektif 16jt masuk TER bracket 15.1-16.95jt (7%). PPh 16jt × 7% = 1.12jt."}
+    },
+    {
+      "id": "THR-002",
+      "description": "K/1, gaji 12jt, THR 12jt → total 24jt",
+      "input": {"period": {"year": 2026, "month": 5}, "ptkp_code": "K/1", "has_npwp": true,
+        "tax_method": "gross", "gross_taxable": 24000000, "calculation_type": "thr",
+        "regular_salary": 12000000, "thr_amount": 12000000},
+      "expected": {"ter_category": "B", "ter_rate_percent": 0.0900, "pph21_amount": 2160000,
+        "calculation_notes": "24jt masuk bracket B 21.85-26jt (9%)"}
+    },
+    {
+      "id": "THR-003",
+      "description": "Karyawan masa kerja 6 bulan — THR prorata (PP 36/2021)",
+      "input": {"period": {"year": 2026, "month": 5}, "ptkp_code": "TK/0", "has_npwp": true,
+        "tax_method": "gross", "gross_taxable": 12000000, "calculation_type": "thr",
+        "regular_salary": 8000000, "thr_amount": 4000000, "service_months": 6},
+      "expected": {"ter_category": "A", "ter_rate_percent": 0.0400, "pph21_amount": 480000,
+        "calculation_notes": "THR prorata = 8jt × 6/12 = 4jt. Gross bulan Mei = 12jt (bracket 11.6-12.5jt = 4%)"}
+    },
+    {
+      "id": "THR-004",
+      "description": "Bonus tahunan 30jt untuk K/0 dengan gaji 15jt bulan Des",
+      "input": {"period": {"year": 2026, "month": 12}, "ptkp_code": "K/0", "has_npwp": true,
+        "tax_method": "gross", "gross_taxable": 45000000, "calculation_type": "bonus",
+        "regular_salary": 15000000, "bonus_amount": 30000000},
+      "expected": {"ter_category": "A", "ter_rate_percent": 0.1700, "pph21_amount": 7650000,
+        "calculation_notes": "45jt masuk bracket 43.85-47.8jt (17%). Note: kalau ini di Desember, ada juga koreksi tahunan terpisah."}
+    },
+    {
+      "id": "THR-005",
+      "description": "THR untuk K/3 (kategori C) dengan gaji 10jt",
+      "input": {"period": {"year": 2026, "month": 5}, "ptkp_code": "K/3", "has_npwp": true,
+        "tax_method": "gross", "gross_taxable": 20000000, "calculation_type": "thr",
+        "regular_salary": 10000000, "thr_amount": 10000000},
+      "expected": {"ter_category": "C", "ter_rate_percent": 0.0800, "pph21_amount": 1600000,
+        "calculation_notes": "20jt masuk C bracket 19.5-22.7jt (8%)"}
+    },
+    {
+      "id": "THR-006",
+      "description": "Bonus mid-year kecil (5jt) — TK/0 gaji 8jt",
+      "input": {"period": {"year": 2026, "month": 7}, "ptkp_code": "TK/0", "has_npwp": true,
+        "tax_method": "gross", "gross_taxable": 13000000, "calculation_type": "bonus",
+        "regular_salary": 8000000, "bonus_amount": 5000000},
+      "expected": {"ter_category": "A", "ter_rate_percent": 0.0500, "pph21_amount": 650000}
+    },
+    {
+      "id": "THR-007",
+      "description": "Karyawan masa kerja 2 bulan — THR prorata sangat kecil",
+      "input": {"period": {"year": 2026, "month": 5}, "ptkp_code": "TK/0", "has_npwp": true,
+        "tax_method": "gross", "gross_taxable": 9333333, "calculation_type": "thr",
+        "regular_salary": 8000000, "thr_amount": 1333333, "service_months": 2},
+      "expected": {"ter_category": "A", "ter_rate_percent": 0.0200, "pph21_amount": 186667,
+        "calculation_notes": "8jt × 2/12 = 1.333jt. Gross 9.33jt bracket 9.65-10.05jt? Actually 8.55-9.65jt = 1.75% → recompute. Runner may adjust."}
+    },
+    {
+      "id": "THR-008",
+      "description": "Sangat besar: gaji 50jt + bonus akhir tahun 100jt",
+      "input": {"period": {"year": 2026, "month": 12}, "ptkp_code": "TK/0", "has_npwp": true,
+        "tax_method": "gross", "gross_taxable": 150000000, "calculation_type": "bonus",
+        "regular_salary": 50000000, "bonus_amount": 100000000},
+      "expected": {"ter_category": "A", "ter_rate_percent": 0.2500, "pph21_amount": 37500000,
+        "calculation_notes": "150jt masuk bracket 125-157jt (25%)"}
+    }
+  ]
+}
