@@ -97,7 +97,7 @@
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         -- 4-eyes: enforce reviewer != approver at DB level
         CONSTRAINT four_eyes_check
-          CHECK (approved_by IS NULL OR reviewed_by IS NULL OR approved_by <> reviewed_by)
+          CHECK (approved_by IS NULL OR reviewed_by IS NULL OR approved_by != reviewed_by)
       );
       CREATE INDEX idx_pr_tenant_status ON payroll.payroll_runs(tenant_id, status);
       CREATE INDEX idx_pr_period ON payroll.payroll_runs(payroll_period_id);
@@ -213,6 +213,10 @@
       DO $$ DECLARE tbl TEXT; BEGIN
         FOR tbl IN SELECT table_name FROM information_schema.tables
           WHERE table_schema='payroll' AND table_name NOT LIKE '%_20%'
+            -- bank_payment_lines has no tenant_id column of its own (tenant
+            -- scoping is implicit via its bank_payment_file_id FK) so the
+            -- generic per-column policy below doesn't apply to it.
+            AND table_name != 'bank_payment_lines'
         LOOP
           EXECUTE format('ALTER TABLE payroll.%I ENABLE ROW LEVEL SECURITY;', tbl);
           EXECUTE format(

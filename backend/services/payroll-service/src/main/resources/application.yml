@@ -1,0 +1,65 @@
+spring:
+  application:
+    name: payroll-service
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:hirevo}}
+    username: ${DB_USER:dev}
+    password: ${DB_PASSWORD:dev}
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate.jdbc.time_zone: Asia/Jakarta
+      hibernate.default_schema: payroll
+    open-in-view: false
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.xml
+    default-schema: public
+
+server:
+  port: ${SERVER_PORT:8085}
+  compression:
+    enabled: true
+  error:
+    include-message: always
+
+hirevo:
+  security:
+    jwt:
+      issuer: ${JWT_ISSUER:http://localhost:8081}
+      algorithm: HS256
+      access-token-ttl: PT15M
+      refresh-token-ttl: P7D
+      hmac-secret: ${JWT_HMAC_SECRET:change-me-locally-only-in-dev-use-rs256-with-kms-in-prod-32chars-minimum!!!}
+    field-encryption:
+      key-base64: ${FIELD_ENC_KEY:qeYqCEsBGqK9wCk8jFvXsK9lF4B0kR9wUwB3wKt5S1s=}
+    cors:
+      allowed-origin-patterns: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,https://*.hirevo.id}
+  services:
+    employee-url: ${EMPLOYEE_SERVICE_URL:http://localhost:8082/v1}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,liquibase
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+logging:
+  level:
+    root: INFO
+    com.hirevo: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level [tenant=%X{tenant_id:-}] %logger{36} - %msg%n"
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
