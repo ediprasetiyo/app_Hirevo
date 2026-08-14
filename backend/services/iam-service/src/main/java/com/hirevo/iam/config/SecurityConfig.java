@@ -40,7 +40,12 @@ public class SecurityConfig {
         .cors(cors -> cors.configurationSource(corsConfigurationSource()))
         .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .authorizeHttpRequests(auth -> auth
+            // "/swagger-ui/**" only matches paths with a slash after "swagger-ui" —
+            // it does NOT match the actual entry URL springdoc serves,
+            // "/swagger-ui.html" (dot, no slash), so that request was 403'd
+            // even though everything it redirects to afterward was permitted.
             .requestMatchers("/actuator/**", "/v3/api-docs/**", "/swagger-ui/**",
+                             "/swagger-ui.html",
                              "/v1/auth/login", "/v1/auth/refresh", "/v1/auth/mfa/verify",
                              "/v1/auth/password/reset/**", "/v1/tenants/signup").permitAll()
             .anyRequest().authenticated())
