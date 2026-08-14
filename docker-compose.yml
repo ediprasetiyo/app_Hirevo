@@ -9,11 +9,14 @@ services:
       POSTGRES_PASSWORD: dev
       POSTGRES_DB: hirevo
     ports:
-      # Host port 5433 → container 5432 to avoid clash with any pre-existing
-      # local Postgres on 5432 (Odoo, EnterpriseDB installer, WSL, etc.).
-      # Services connect via DB_PORT=5433 from host. Inside compose network
+      # Host port 5434 → container 5432. This machine has TWO native Windows
+      # Postgres services (postgresql-x64-17 AND PostgreSQL_For_Odoo) — one of
+      # them was already squatting on 5433, causing nondeterministic auth
+      # failures (JDBC connections randomly landed on the wrong listener).
+      # 5434 was verified free via `netstat -ano` before picking it.
+      # Services connect via DB_PORT=5434 from host. Inside compose network
       # use hostname `postgres:5432` (unchanged).
-      - "5433:5432"
+      - "5434:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./ops/scripts/postgres-init.sql:/docker-entrypoint-initdb.d/00-init.sql:ro
