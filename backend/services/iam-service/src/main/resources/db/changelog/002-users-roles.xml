@@ -87,7 +87,7 @@
     <createTable tableName="user_roles" schemaName="iam">
       <column name="user_id" type="uuid"><constraints nullable="false"/></column>
       <column name="role_id" type="uuid"><constraints nullable="false"/></column>
-      <column name="scope_branch_id" type="uuid" defaultValue="00000000-0000-0000-0000-000000000000">
+      <column name="scope_branch_id" type="uuid" defaultValueComputed="'00000000-0000-0000-0000-000000000000'::uuid">
         <constraints nullable="false"/>
       </column>
       <column name="assigned_at" type="timestamptz" defaultValueComputed="now()"><constraints nullable="false"/></column>
