@@ -51,6 +51,21 @@
       <groupId>commons-codec</groupId>
       <artifactId>commons-codec</artifactId>
     </dependency>
+    <!--
+      Spring Security's Argon2PasswordEncoder delegates to BouncyCastle's Argon2
+      implementation but only declares it as an OPTIONAL dependency — it is not
+      pulled in transitively by spring-boot-starter-security. Without this,
+      PasswordEncoderConfig's bean throws NoClassDefFoundError at first use
+      (org.bouncycastle.crypto.params.Argon2Parameters$Builder) — it compiles
+      fine and even starts the app successfully, since the class is only
+      touched lazily on the first encode()/matches() call. Version is managed
+      by Spring Boot's dependency BOM, already imported in the parent POM.
+    -->
+    <dependency>
+      <groupId>org.bouncycastle</groupId>
+      <artifactId>bcprov-jdk18on</artifactId>
+      <version>1.78.1</version>
+    </dependency>
     <dependency>
       <groupId>org.projectlombok</groupId>
       <artifactId>lombok</artifactId>
