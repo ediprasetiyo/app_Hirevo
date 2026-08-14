@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/ui/password-input';
-import { api, getErrorMessage, isMockMode } from '@/lib/api';
+import { api, authStore, getErrorMessage, isMockMode } from '@/lib/api';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -22,7 +22,8 @@ export default function LoginPage() {
     setLoading(true);
     setError(null);
     try {
-      await api.login(email, password);
+      const res = await api.login(email, password);
+      authStore.setToken(res.accessToken);
       router.push('/dashboard');
     } catch (err) {
       setError(getErrorMessage(err, 'Login gagal — coba lagi'));

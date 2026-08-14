@@ -1,8 +1,12 @@
+'use client';
+
 import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
 import type { ReactNode } from 'react';
+import { authStore } from '@/lib/api';
 
 const nav = [
-  { href: '/dashboard', label: 'Dashboard', icon: '🏠', active: true },
+  { href: '/dashboard', label: 'Dashboard', icon: '🏠' },
   { href: '/dashboard/employees', label: 'Karyawan', icon: '👥' },
   { href: '/dashboard/attendance', label: 'Attendance', icon: '⏰' },
   { href: '/dashboard/leaves', label: 'Cuti', icon: '🌴' },
@@ -14,6 +18,18 @@ const nav = [
 ];
 
 export default function DashboardLayout({ children }: { children: ReactNode }) {
+  const pathname = usePathname();
+  const router = useRouter();
+
+  function isActive(href: string) {
+    return href === '/dashboard' ? pathname === href : pathname.startsWith(href);
+  }
+
+  function onLogout() {
+    authStore.clear();
+    router.push('/login');
+  }
+
   return (
     <div className="flex min-h-screen bg-canvas">
       <aside className="hidden w-60 flex-col border-r border-border-subtle bg-surface md:flex">
@@ -29,7 +45,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               key={n.href}
               href={n.href}
               className={`mb-1 flex items-center gap-3 rounded-md px-3 py-2 text-sm ${
-                n.active ? 'bg-brand-subtle font-semibold text-brand-fg' : 'text-fg hover:bg-sunken'
+                isActive(n.href) ? 'bg-brand-subtle font-semibold text-brand-fg' : 'text-fg hover:bg-sunken'
               }`}
             >
               <span>{n.icon}</span>
@@ -41,9 +57,12 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
           <Link href="/wireframes" className="block rounded-md px-3 py-2 text-xs text-fg-muted hover:bg-sunken">
             🎨 Preview Wireframes
           </Link>
-          <Link href="/logout" className="block rounded-md px-3 py-2 text-xs text-fg-muted hover:bg-sunken">
+          <button
+            onClick={onLogout}
+            className="block w-full rounded-md px-3 py-2 text-left text-xs text-fg-muted hover:bg-sunken"
+          >
             → Keluar
-          </Link>
+          </button>
         </div>
       </aside>
 
