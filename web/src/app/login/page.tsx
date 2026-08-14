@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { api, isMockMode } from '@/lib/api';
+import { api, getErrorMessage, isMockMode } from '@/lib/api';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -22,8 +22,7 @@ export default function LoginPage() {
       await api.login(email, password);
       router.push('/dashboard');
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Login gagal — coba lagi';
-      setError(message);
+      setError(getErrorMessage(err, 'Login gagal — coba lagi'));
     } finally {
       setLoading(false);
     }

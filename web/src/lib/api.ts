@@ -60,3 +60,24 @@ export const api = {
 };
 
 export const isMockMode = MOCK_MODE;
+
+/**
+ * `request()` throws a plain ApiError object (RFC 7807 problem+json shape) on
+ * HTTP failure, not an `Error` instance — a naive `err instanceof Error` check
+ * in a catch block will always miss it and fall through to a generic message,
+ * silently discarding the backend's actual `detail` (e.g. "Invalid
+ * credentials"). Use this helper in every catch block that surfaces API
+ * errors to the user instead of re-deriving the same instanceof check.
+ */
+export function getErrorMessage(err: unknown, fallback: string): string {
+  if (err && typeof err === 'object' && 'detail' in err && typeof err.detail === 'string') {
+    return err.detail;
+  }
+  if (err && typeof err === 'object' && 'title' in err && typeof err.title === 'string') {
+    return err.title;
+  }
+  if (err instanceof Error) {
+    return err.message;
+  }
+  return fallback;
+}
