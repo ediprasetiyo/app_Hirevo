@@ -9,8 +9,10 @@ import { api, getErrorMessage, isMockMode } from '@/lib/api';
 
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState('edi@acme.hirevo.id');
-  const [password, setPassword] = useState('SecurePass123!');
+  // Pre-filled to match the tenant in .env.local's NEXT_PUBLIC_DEFAULT_TENANT_SUBDOMAIN
+  // (testco) so this page works out of the box in local live-mode testing.
+  const [email, setEmail] = useState('test@testco.com');
+  const [password, setPassword] = useState('TestPass123!');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

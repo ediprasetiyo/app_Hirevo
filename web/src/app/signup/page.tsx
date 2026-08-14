@@ -4,25 +4,56 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { isMockMode } from '@/lib/api';
+import { api, getErrorMessage, isMockMode, type TenantSignupResponse } from '@/lib/api';
 
 export default function SignupPage() {
-  const [submitted, setSubmitted] = useState(false);
+  const [form, setForm] = useState({
+    companyName: '',
+    subdomain: '',
+    adminEmail: '',
+    adminFullName: '',
+    adminPassword: '',
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [result, setResult] = useState<TenantSignupResponse | null>(null);
 
-  if (submitted) {
+  function update<K extends keyof typeof form>(key: K, value: string) {
+    setForm((f) => ({ ...f, [key]: value }));
+  }
+
+  async function onSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await api.signupTenant(form);
+      setResult(res);
+    } catch (err) {
+      setError(getErrorMessage(err, 'Pendaftaran gagal — coba lagi'));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (result) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-canvas p-8">
         <div className="max-w-md rounded-lg border border-border-subtle bg-surface p-8 text-center shadow-md">
-          <div className="text-5xl">✉️</div>
-          <h1 className="mt-4 text-2xl font-bold">Cek email Anda</h1>
+          <div className="text-5xl">🎉</div>
+          <h1 className="mt-4 text-2xl font-bold">Workspace Anda siap</h1>
           <p className="mt-2 text-fg-muted">
-            Kami mengirim link verifikasi. Klik untuk mengaktifkan workspace &amp; masuk.
+            <span className="font-semibold text-fg">{result.tenantUrl}</span> sudah aktif.
+            Belum ada verifikasi email di tahap ini — Anda bisa langsung masuk.
           </p>
           {isMockMode && (
-            <div className="mt-6 rounded-md border border-info bg-info-bg px-3 py-2 text-xs text-info">
-              🧪 Mode preview — tidak ada email terkirim. <Link href="/dashboard" className="font-semibold underline">Lompat ke dashboard →</Link>
+            <div className="mt-4 rounded-md border border-info bg-info-bg px-3 py-2 text-xs text-info">
+              🧪 Mode preview — tenant di atas adalah data mock, tidak benar-benar dibuat.
             </div>
           )}
+          <Button asChild size="lg" className="mt-6 w-full">
+            <Link href="/login">Masuk sekarang →</Link>
+          </Button>
         </div>
       </div>
     );
@@ -38,8 +69,15 @@ export default function SignupPage() {
           <h1 className="text-2xl font-bold">Buat workspace baru</h1>
           <p className="mt-2 text-sm text-fg-muted">Trial 14 hari · Free untuk ≤ 5 karyawan · No kartu kredit</p>
 
-          <form onSubmit={(e) => { e.preventDefault(); setSubmitted(true); }} className="mt-6 space-y-4">
-            <Field label="Nama Perusahaan" name="companyName" placeholder="PT Contoh Sejahtera" required />
+          <form onSubmit={onSubmit} className="mt-6 space-y-4">
+            <Field
+              label="Nama Perusahaan"
+              name="companyName"
+              placeholder="PT Contoh Sejahtera"
+              required
+              value={form.companyName}
+              onChange={(e) => update('companyName', e.target.value)}
+            />
             <div>
               <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-fg-muted">Subdomain</label>
               <div className="flex items-center rounded-md border border-border bg-sunken pr-3">
@@ -48,15 +86,49 @@ export default function SignupPage() {
                   placeholder="acme"
                   pattern="^[a-z0-9](?:[a-z0-9-]{1,61}[a-z0-9])?$"
                   required
+                  value={form.subdomain}
+                  onChange={(e) => update('subdomain', e.target.value.toLowerCase())}
                 />
                 <span className="text-sm text-fg-subtle">.hirevo.id</span>
               </div>
             </div>
-            <Field label="Email Admin" name="adminEmail" type="email" placeholder="anda@perusahaan.com" required />
-            <Field label="Nama Lengkap Admin" name="adminFullName" placeholder="Nama Anda" required />
-            <Field label="Kata Sandi" name="adminPassword" type="password" placeholder="Min. 8 karakter" required minLength={8} />
+            <Field
+              label="Email Admin"
+              name="adminEmail"
+              type="email"
+              placeholder="anda@perusahaan.com"
+              required
+              value={form.adminEmail}
+              onChange={(e) => update('adminEmail', e.target.value)}
+            />
+            <Field
+              label="Nama Lengkap Admin"
+              name="adminFullName"
+              placeholder="Nama Anda"
+              required
+              value={form.adminFullName}
+              onChange={(e) => update('adminFullName', e.target.value)}
+            />
+            <Field
+              label="Kata Sandi"
+              name="adminPassword"
+              type="password"
+              placeholder="Min. 8 karakter"
+              required
+              minLength={8}
+              value={form.adminPassword}
+              onChange={(e) => update('adminPassword', e.target.value)}
+            />
 
-            <Button type="submit" size="lg" className="w-full">Daftar &amp; Kirim Verifikasi</Button>
+            {error && (
+              <p className="rounded-md border border-danger bg-danger-bg px-3 py-2 text-sm text-danger">
+                {error}
+              </p>
+            )}
+
+            <Button type="submit" size="lg" className="w-full" disabled={loading}>
+              {loading ? 'Memproses…' : 'Daftar & Buat Workspace'}
+            </Button>
 
             <p className="text-center text-xs text-fg-subtle">
               Dengan mendaftar Anda setuju dengan{' '}
@@ -75,7 +147,9 @@ export default function SignupPage() {
   );
 }
 
-function Field(props: React.InputHTMLAttributes<HTMLInputElement> & { label: string; name: string }) {
+function Field(
+  props: React.InputHTMLAttributes<HTMLInputElement> & { label: string; name: string }
+) {
   const { label, ...rest } = props;
   return (
     <div>

@@ -4,6 +4,13 @@
  */
 
 export const mocks = {
+  '/tenants/signup': () => ({
+    tenantId: '33333333-3333-3333-3333-000000000099',
+    subdomain: 'demo',
+    adminUserId: '44444444-4444-4444-4444-000000000099',
+    tenantUrl: 'https://demo.hirevo.id',
+  }),
+
   '/auth/login': () => ({
     accessToken: 'mock.jwt.token',
     refreshToken: 'mock.refresh.token',

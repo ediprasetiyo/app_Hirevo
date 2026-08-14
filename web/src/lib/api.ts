@@ -47,6 +47,21 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return res.json() as Promise<T>;
 }
 
+export interface TenantSignupRequest {
+  companyName: string;
+  subdomain: string;
+  adminEmail: string;
+  adminPassword: string;
+  adminFullName: string;
+}
+
+export interface TenantSignupResponse {
+  tenantId: string;
+  subdomain: string;
+  adminUserId: string;
+  tenantUrl: string;
+}
+
 export const api = {
   login: (email: string, password: string) =>
     request<{ accessToken: string; refreshToken: string; user: unknown }>('/auth/login', {
@@ -57,6 +72,16 @@ export const api = {
   me: () => request<{ user_id: string; tenant_id: string; roles: string[] }>('/me'),
 
   hrDashboard: () => request<unknown>('/reports/dashboard/hr'),
+
+  // Note: unlike other calls, tenant signup is tenant-less by definition — it
+  // does not send X-Tenant-Subdomain (there is no tenant yet). The request()
+  // helper sends it unconditionally today, which iam-service happens to
+  // ignore for this specific public endpoint, but be aware if that changes.
+  signupTenant: (payload: TenantSignupRequest) =>
+    request<TenantSignupResponse>('/tenants/signup', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
 };
 
 export const isMockMode = MOCK_MODE;
