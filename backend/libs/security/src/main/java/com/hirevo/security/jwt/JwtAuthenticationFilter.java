@@ -18,6 +18,15 @@ import org.springframework.web.filter.OncePerRequestFilter;
  * Validates the {@code Authorization: Bearer <jwt>} header, populates
  * {@link SecurityContextHolder} with a Hirevo principal + authorities,
  * and (if not already set) puts the tenant id into {@link TenantContext}.
+ *
+ * <p>On a missing/expired/invalid token this filter does NOT write a 401
+ * response itself — it just leaves the request unauthenticated and lets the
+ * chain continue. The authorization decision (permitAll vs authenticated)
+ * belongs to Spring Security's {@code authorizeHttpRequests} rules, which run
+ * after this filter. Short-circuiting here used to reject public endpoints
+ * like {@code /v1/auth/login} whenever the browser happened to still be
+ * carrying a stale/expired token from a previous session — the frontend
+ * always attaches whatever token it has in storage, even to the login call.
  */
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -57,13 +66,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
           TenantContext.set(claims.tenantId());
         }
       } catch (HirevoException ex) {
+        // Invalid/expired token: proceed unauthenticated rather than rejecting
+        // outright. Protected endpoints will still 401 via Spring Security's
+        // own entry point; permitAll endpoints (login, refresh, signup,
+        // swagger, actuator) work regardless of what stale token the client
+        // happened to send.
         SecurityContextHolder.clearContext();
-        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-        response.setContentType("application/problem+json");
-        response.getWriter()
-            .write("{\"type\":\"about:blank\",\"title\":\"" + ex.errorCode().code()
-                + "\",\"status\":401,\"detail\":\"" + ex.getMessage() + "\"}");
-        return;
       }
     }
     chain.doFilter(request, response);

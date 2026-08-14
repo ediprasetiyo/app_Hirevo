@@ -16,11 +16,13 @@ const SERVICE_URLS: Record<string, string> = {
   iam: process.env.NEXT_PUBLIC_IAM_API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8081/v1',
   employee: process.env.NEXT_PUBLIC_EMPLOYEE_API_URL ?? 'http://localhost:8082/v1',
   attendance: process.env.NEXT_PUBLIC_ATTENDANCE_API_URL ?? 'http://localhost:8083/v1',
+  leave: process.env.NEXT_PUBLIC_LEAVE_API_URL ?? 'http://localhost:8084/v1',
 };
 
 const TENANT_SUBDOMAIN = process.env.NEXT_PUBLIC_DEFAULT_TENANT_SUBDOMAIN ?? 'acme';
 const MOCK_MODE = process.env.NEXT_PUBLIC_MOCK_MODE === 'true';
 const TOKEN_STORAGE_KEY = 'hirevo_access_token';
+const REFRESH_STORAGE_KEY = 'hirevo_refresh_token';
 
 export interface ApiError {
   code: string;
@@ -41,20 +43,66 @@ export const authStore = {
     if (typeof window === 'undefined') return null;
     return window.localStorage.getItem(TOKEN_STORAGE_KEY);
   },
-  setToken(token: string) {
+  getRefreshToken(): string | null {
+    if (typeof window === 'undefined') return null;
+    return window.localStorage.getItem(REFRESH_STORAGE_KEY);
+  },
+  setTokens(accessToken: string, refreshToken: string) {
     if (typeof window === 'undefined') return;
-    window.localStorage.setItem(TOKEN_STORAGE_KEY, token);
+    window.localStorage.setItem(TOKEN_STORAGE_KEY, accessToken);
+    window.localStorage.setItem(REFRESH_STORAGE_KEY, refreshToken);
   },
   clear() {
     if (typeof window === 'undefined') return;
     window.localStorage.removeItem(TOKEN_STORAGE_KEY);
+    window.localStorage.removeItem(REFRESH_STORAGE_KEY);
   },
 };
+
+/**
+ * Shared in-flight refresh promise. Without this, N parallel requests that
+ * all 401 at once (e.g. a page firing Promise.all([...]) on load) would each
+ * independently call /auth/refresh with the SAME refresh token — but
+ * iam-service ROTATES refresh tokens on every use and treats reusing an
+ * already-rotated token as theft (invalidates the entire session chain, see
+ * RefreshTokenStore's reuse-detection). Concurrent callers must await one
+ * shared refresh, not race N of them.
+ */
+let refreshPromise: Promise<string> | null = null;
+
+async function refreshAccessToken(): Promise<string> {
+  if (refreshPromise) return refreshPromise;
+
+  refreshPromise = (async () => {
+    const rt = authStore.getRefreshToken();
+    if (!rt) throw { code: 'auth.no_refresh_token', status: 401, title: 'Not logged in' } satisfies ApiError;
+
+    const res = await fetch(`${SERVICE_URLS.iam}/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken: rt }),
+    });
+    if (!res.ok) {
+      authStore.clear();
+      throw { code: 'auth.refresh_failed', status: 401, title: 'Session expired' } satisfies ApiError;
+    }
+    const body: LoginResponse = await res.json();
+    authStore.setTokens(body.accessToken, body.refreshToken);
+    return body.accessToken;
+  })();
+
+  try {
+    return await refreshPromise;
+  } finally {
+    refreshPromise = null;
+  }
+}
 
 async function request<T>(
   service: keyof typeof SERVICE_URLS,
   path: string,
-  init?: RequestInit
+  init?: RequestInit,
+  isRetry = false
 ): Promise<T> {
   const mockKey = path as keyof typeof mocks;
   if (MOCK_MODE) {
@@ -83,6 +131,22 @@ async function request<T>(
     } catch {
       /* body was not JSON */
     }
+
+    // Access token expired (or generically unauthenticated) — refresh once and
+    // retry the SAME request. isRetry guards against looping forever if the
+    // refresh itself fails or the retried request 401s again for some other
+    // reason (e.g. genuinely revoked session).
+    const isExpiry = res.status === 401 && (problem.code === 'auth.token_expired' || problem.code === 'unknown');
+    if (isExpiry && !isRetry && authStore.getRefreshToken()) {
+      try {
+        await refreshAccessToken();
+        return request<T>(service, path, init, true);
+      } catch {
+        authStore.clear();
+        throw problem;
+      }
+    }
+
     throw problem;
   }
 
@@ -208,6 +272,47 @@ export interface AttendanceLogEntry {
   anomalyReason: string | null;
 }
 
+export interface LeaveType {
+  id: string;
+  code: string;
+  name: string;
+  paid: boolean;
+  defaultDaysPerYear: number;
+  requireAttachment: boolean;
+}
+
+export interface LeaveBalance {
+  leaveTypeId: string;
+  leaveTypeCode: string;
+  leaveTypeName: string;
+  year: number;
+  initialBalance: number;
+  carryOver: number;
+  used: number;
+  pending: number;
+  remaining: number;
+}
+
+export interface LeaveRequestEntry {
+  id: string;
+  employeeId: string;
+  leaveTypeId: string;
+  leaveTypeName: string | null;
+  startDate: string;
+  endDate: string;
+  totalDays: number;
+  reason: string | null;
+  status: string;
+}
+
+export interface CreateLeaveRequestPayload {
+  employeeId: string;
+  leaveTypeId: string;
+  startDate: string;
+  endDate: string;
+  reason?: string;
+}
+
 export const api = {
   login: (email: string, password: string) =>
     request<LoginResponse>('iam', '/auth/login', {
@@ -279,6 +384,31 @@ export const api = {
     if (params.to) qs.set('to', params.to);
     return request<AttendanceLogEntry[]>('attendance', `/attendance/logs?${qs.toString()}`);
   },
+
+  listLeaveTypes: () => request<LeaveType[]>('leave', '/leave-types'),
+
+  listLeaveBalances: (employeeId: string, year?: number) => {
+    const qs = new URLSearchParams({ employeeId });
+    if (year) qs.set('year', String(year));
+    return request<LeaveBalance[]>('leave', `/leave-balances?${qs.toString()}`);
+  },
+
+  submitLeaveRequest: (payload: CreateLeaveRequestPayload) =>
+    request<LeaveRequestEntry>('leave', '/leave-requests', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  listLeaveRequests: (employeeId?: string) => {
+    const qs = employeeId ? `?employeeId=${employeeId}` : '';
+    return request<LeaveRequestEntry[]>('leave', `/leave-requests${qs}`);
+  },
+
+  approveLeaveRequest: (id: string) =>
+    request<LeaveRequestEntry>('leave', `/leave-requests/${id}/approve`, { method: 'POST' }),
+
+  rejectLeaveRequest: (id: string) =>
+    request<LeaveRequestEntry>('leave', `/leave-requests/${id}/reject`, { method: 'POST' }),
 };
 
 export const isMockMode = MOCK_MODE;

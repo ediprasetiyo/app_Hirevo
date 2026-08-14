@@ -23,7 +23,7 @@ export default function LoginPage() {
     setError(null);
     try {
       const res = await api.login(email, password);
-      authStore.setToken(res.accessToken);
+      authStore.setTokens(res.accessToken, res.refreshToken);
       router.push('/dashboard');
     } catch (err) {
       setError(getErrorMessage(err, 'Login gagal — coba lagi'));
