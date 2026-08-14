@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { PasswordInput } from '@/components/ui/password-input';
 import { api, getErrorMessage, isMockMode, type TenantSignupResponse } from '@/lib/api';
 
 export default function SignupPage() {
@@ -109,16 +110,19 @@ export default function SignupPage() {
               value={form.adminFullName}
               onChange={(e) => update('adminFullName', e.target.value)}
             />
-            <Field
-              label="Kata Sandi"
-              name="adminPassword"
-              type="password"
-              placeholder="Min. 8 karakter"
-              required
-              minLength={8}
-              value={form.adminPassword}
-              onChange={(e) => update('adminPassword', e.target.value)}
-            />
+            <div>
+              <label htmlFor="adminPassword" className="mb-1 block text-xs font-semibold uppercase tracking-wide text-fg-muted">
+                Kata Sandi
+              </label>
+              <PasswordInput
+                id="adminPassword"
+                placeholder="Min. 8 karakter"
+                required
+                minLength={8}
+                value={form.adminPassword}
+                onChange={(e) => update('adminPassword', e.target.value)}
+              />
+            </div>
 
             {error && (
               <p className="rounded-md border border-danger bg-danger-bg px-3 py-2 text-sm text-danger">
