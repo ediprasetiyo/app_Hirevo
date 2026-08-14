@@ -38,6 +38,7 @@
 
     <module>services/api-gateway</module>
     <module>services/iam-service</module>
+    <module>services/employee-service</module>
     <!-- Other services scaffold-only for now; uncomment as built -->
     <!--
     <module>services/tenant-service</module>

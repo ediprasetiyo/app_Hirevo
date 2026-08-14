@@ -9,7 +9,7 @@ import com.hirevo.iam.domain.model.User;
 import com.hirevo.iam.domain.model.UserMfaMethod;
 import com.hirevo.iam.domain.repository.UserMfaMethodRepository;
 import com.hirevo.iam.domain.repository.UserRepository;
-import com.hirevo.iam.infrastructure.crypto.FieldEncryptor;
+import com.hirevo.security.crypto.FieldEncryptor;
 import com.hirevo.iam.infrastructure.redis.RefreshTokenStore;
 import com.hirevo.security.jwt.JwtProperties;
 import com.hirevo.security.jwt.JwtService;

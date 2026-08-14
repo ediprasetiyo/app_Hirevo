@@ -36,6 +36,12 @@
 
   <!-- Indonesia national holidays 2026-2027 (global — nullable tenant_id) -->
   <changeSet id="seed-holidays-table" author="hirevo">
+    <!--
+      A table-level UNIQUE constraint cannot contain expressions like COALESCE
+      (same limitation as PRIMARY KEY — Postgres only accepts a plain column
+      list there). A UNIQUE INDEX, unlike a UNIQUE CONSTRAINT, does accept
+      expressions, so the dedup rule is expressed as an index instead.
+    -->
     <sql>
       CREATE TABLE IF NOT EXISTS employee.holidays (
         id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -43,9 +49,10 @@
         holiday_date DATE NOT NULL,
         name VARCHAR(255) NOT NULL,
         is_national BOOLEAN NOT NULL DEFAULT TRUE,
-        is_joint_leave BOOLEAN NOT NULL DEFAULT FALSE,
-        UNIQUE (COALESCE(tenant_id,'00000000-0000-0000-0000-000000000000'::uuid), holiday_date, name)
+        is_joint_leave BOOLEAN NOT NULL DEFAULT FALSE
       );
+      CREATE UNIQUE INDEX IF NOT EXISTS uk_holidays_tenant_date_name
+        ON employee.holidays (COALESCE(tenant_id,'00000000-0000-0000-0000-000000000000'::uuid), holiday_date, name);
     </sql>
   </changeSet>
 
