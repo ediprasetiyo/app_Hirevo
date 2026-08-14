@@ -84,27 +84,18 @@
     </sql>
   </changeSet>
 
-  <changeSet id="seed-leave-types-uu13" author="hirevo">
-    <!-- Preset per UU 13/2003 & UU Cipta Kerja. tenant_id NULL = template applied at signup. -->
-    <sql>
-      INSERT INTO leave_mgmt.leave_types
-        (tenant_id, code, name, is_paid, default_days_per_year, carry_over_max_days,
-         carry_over_expire_months, require_attachment, is_system)
-      SELECT NULL, code, name, is_paid, days, carry_max, expire, req_attach, TRUE
-      FROM (VALUES
-        ('annual',      'Cuti Tahunan',                    TRUE,  12, 6,    3,  FALSE),
-        ('sick',        'Cuti Sakit',                      TRUE, 365, 0,    0,  TRUE),
-        ('maternity',   'Cuti Melahirkan',                 TRUE,  90, 0,    0,  TRUE),
-        ('paternity',   'Cuti Suami Menemani Istri',       TRUE,   2, 0,    0,  FALSE),
-        ('marriage',    'Cuti Menikah',                    TRUE,   3, 0,    0,  FALSE),
-        ('bereavement', 'Cuti Duka (Keluarga Inti)',       TRUE,   2, 0,    0,  FALSE),
-        ('religious',   'Cuti Ibadah (Haji/Umrah)',        TRUE,  40, 0,    0,  TRUE),
-        ('menstruation','Cuti Haid (Opsional)',            TRUE,   2, 0,    0,  FALSE),
-        ('unpaid',      'Cuti Tanpa Bayaran',              FALSE,  0, 0,    0,  FALSE),
-        ('permit',      'Izin',                            TRUE,   0, 0,    0,  FALSE),
-        ('wfh',         'Work From Home',                  TRUE,   0, 0,    0,  FALSE)
-      ) AS x(code, name, is_paid, days, carry_max, expire, req_attach);
-    </sql>
-  </changeSet>
+  <!--
+    seed-leave-types-uu13 (formerly here) is REMOVED — it inserted tenant_id=NULL
+    as a "global template" row, but two things make that design unworkable:
+    1. This table's tenant_id column is declared NOT NULL (see leave-002 above),
+       so the insert itself violates the schema and fails startup outright.
+    2. Even with tenant_id made nullable, the generic per-schema RLS policy
+       (leave-003-rls) treats a NULL tenant_id as the COALESCE sentinel UUID,
+       which only matches when NO tenant session context is set — meaning a
+       real tenant session could never see these "global" rows anyway.
+    Leave types are now bootstrapped per-tenant on first access instead — see
+    LeaveService.bootstrapTypes() in the Java application layer, which creates
+    the same UU 13/2003 preset (11 types) scoped to the requesting tenant_id.
+  -->
 
 </databaseChangeLog>
