@@ -15,6 +15,7 @@ import { mocks } from './mocks';
 const SERVICE_URLS: Record<string, string> = {
   iam: process.env.NEXT_PUBLIC_IAM_API_URL ?? process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8081/v1',
   employee: process.env.NEXT_PUBLIC_EMPLOYEE_API_URL ?? 'http://localhost:8082/v1',
+  attendance: process.env.NEXT_PUBLIC_ATTENDANCE_API_URL ?? 'http://localhost:8083/v1',
 };
 
 const TENANT_SUBDOMAIN = process.env.NEXT_PUBLIC_DEFAULT_TENANT_SUBDOMAIN ?? 'acme';
@@ -166,6 +167,47 @@ export interface CreateEmployeeRequest {
   };
 }
 
+export interface WorkLocation {
+  id: string;
+  name: string;
+  address: string | null;
+  latitude: number;
+  longitude: number;
+  radiusMeters: number;
+  active: boolean;
+}
+
+export interface CreateWorkLocationRequest {
+  name: string;
+  address?: string;
+  latitude: number;
+  longitude: number;
+  radiusMeters?: number;
+}
+
+export interface ClockRequest {
+  employeeId: string;
+  latitude: number;
+  longitude: number;
+  accuracyMeters?: number;
+  isMockLocation: boolean;
+  source?: string;
+}
+
+export interface AttendanceLogEntry {
+  id: string;
+  employeeId: string;
+  workDate: string;
+  clockInAt: string | null;
+  clockOutAt: string | null;
+  status: string;
+  lateMinutes: number | null;
+  workedMinutes: number | null;
+  fraudScore: number;
+  anomaly: boolean;
+  anomalyReason: string | null;
+}
+
 export const api = {
   login: (email: string, password: string) =>
     request<LoginResponse>('iam', '/auth/login', {
@@ -209,6 +251,34 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ resignDate, reason }),
     }),
+
+  listWorkLocations: () => request<WorkLocation[]>('attendance', '/work-locations'),
+
+  createWorkLocation: (payload: CreateWorkLocationRequest) =>
+    request<WorkLocation>('attendance', '/work-locations', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  clockIn: (payload: ClockRequest) =>
+    request<AttendanceLogEntry>('attendance', '/attendance/clock-in', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  clockOut: (payload: ClockRequest) =>
+    request<AttendanceLogEntry>('attendance', '/attendance/clock-out', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  listAttendanceLogs: (params: { employeeId?: string; from?: string; to?: string } = {}) => {
+    const qs = new URLSearchParams();
+    if (params.employeeId) qs.set('employeeId', params.employeeId);
+    if (params.from) qs.set('from', params.from);
+    if (params.to) qs.set('to', params.to);
+    return request<AttendanceLogEntry[]>('attendance', `/attendance/logs?${qs.toString()}`);
+  },
 };
 
 export const isMockMode = MOCK_MODE;
