@@ -96,7 +96,7 @@
   </changeSet>
 
   <changeSet id="loan-004-rls" author="hirevo">
-    <sql>
+    <sql splitStatements="false">
       DO $$ DECLARE tbl TEXT; BEGIN
         FOR tbl IN SELECT table_name FROM information_schema.tables WHERE table_schema='loan' LOOP
           EXECUTE format('ALTER TABLE loan.%I ENABLE ROW LEVEL SECURITY;', tbl);

@@ -121,7 +121,7 @@
   </changeSet>
 
   <changeSet id="bpjs-003-rls" author="hirevo">
-    <sql>
+    <sql splitStatements="false">
       DO $$ DECLARE tbl TEXT; BEGIN
         FOR tbl IN
           SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace

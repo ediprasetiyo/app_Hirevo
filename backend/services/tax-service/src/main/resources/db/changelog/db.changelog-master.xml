@@ -244,8 +244,8 @@
   </changeSet>
 
   <changeSet id="tax-006-rls" author="hirevo">
-    <sql>
-      -- RLS only on tenant-scoped tables; reference tables (ptkp_statuses, tax_brackets_*) are global.
+    <!-- RLS only on tenant-scoped tables; reference tables (ptkp_statuses, tax_brackets_*) are global. -->
+    <sql splitStatements="false">
       DO $$ DECLARE tbl TEXT; BEGIN
         FOR tbl IN
           SELECT c.relname

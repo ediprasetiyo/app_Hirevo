@@ -72,7 +72,7 @@
   </changeSet>
 
   <changeSet id="leave-003-rls" author="hirevo">
-    <sql>
+    <sql splitStatements="false">
       DO $$ DECLARE tbl TEXT; BEGIN
         FOR tbl IN SELECT table_name FROM information_schema.tables WHERE table_schema='leave_mgmt' LOOP
           EXECUTE format('ALTER TABLE leave_mgmt.%I ENABLE ROW LEVEL SECURITY;', tbl);

@@ -209,7 +209,7 @@
   </changeSet>
 
   <changeSet id="pay-006-rls" author="hirevo">
-    <sql>
+    <sql splitStatements="false">
       DO $$ DECLARE tbl TEXT; BEGIN
         FOR tbl IN SELECT table_name FROM information_schema.tables
           WHERE table_schema='payroll' AND table_name NOT LIKE '%_20%'

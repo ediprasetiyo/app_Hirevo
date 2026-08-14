@@ -58,7 +58,14 @@
       Bypass role for platform admin tools that must query cross-tenant.
       GRANTED sparingly; usage always audited.
     -->
-    <sql>DO $$ BEGIN
+    <!--
+      splitStatements="false" is required here: Liquibase's default statement
+      splitter breaks on every `;`, including the ones INSIDE this dollar-quoted
+      PL/pgSQL block — it doesn't parse Postgres's $$ ... $$ quoting the way
+      psql does, so without this flag the DO block gets chopped in half
+      ("Unterminated dollar quote").
+    -->
+    <sql splitStatements="false">DO $$ BEGIN
       IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='hirevo_platform_admin') THEN
         CREATE ROLE hirevo_platform_admin NOLOGIN;
       END IF;
