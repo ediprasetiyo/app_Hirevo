@@ -1,5 +1,6 @@
 package com.hirevo.leave.config;
 
+import com.hirevo.security.jwt.JwtAuthenticationEntryPoint;
 import com.hirevo.security.jwt.JwtAuthenticationFilter;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
@@ -22,12 +23,14 @@ public class SecurityConfig {
   private String allowedOriginPatterns;
 
   @Bean
-  public SecurityFilterChain filterChain(HttpSecurity http, JwtAuthenticationFilter jwtFilter)
+  public SecurityFilterChain filterChain(
+      HttpSecurity http, JwtAuthenticationFilter jwtFilter, JwtAuthenticationEntryPoint entryPoint)
       throws Exception {
     return http
         .csrf(csrf -> csrf.disable())
         .cors(cors -> cors.configurationSource(corsConfigurationSource()))
         .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+        .exceptionHandling(handling -> handling.authenticationEntryPoint(entryPoint))
         .authorizeHttpRequests(auth -> auth
             .requestMatchers("/actuator/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html")
             .permitAll()

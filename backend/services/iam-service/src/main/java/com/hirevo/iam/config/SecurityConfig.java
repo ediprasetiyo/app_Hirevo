@@ -1,5 +1,6 @@
 package com.hirevo.iam.config;
 
+import com.hirevo.security.jwt.JwtAuthenticationEntryPoint;
 import com.hirevo.security.jwt.JwtAuthenticationFilter;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
@@ -28,7 +29,8 @@ public class SecurityConfig {
   private String allowedOriginPatterns;
 
   @Bean
-  public SecurityFilterChain filterChain(HttpSecurity http, JwtAuthenticationFilter jwtFilter)
+  public SecurityFilterChain filterChain(
+      HttpSecurity http, JwtAuthenticationFilter jwtFilter, JwtAuthenticationEntryPoint entryPoint)
       throws Exception {
     // Called directly (not autowired as a method parameter) because Spring MVC's
     // HandlerMappingIntrospector ALSO implements CorsConfigurationSource, and
@@ -39,6 +41,7 @@ public class SecurityConfig {
         .csrf(csrf -> csrf.disable())
         .cors(cors -> cors.configurationSource(corsConfigurationSource()))
         .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+        .exceptionHandling(handling -> handling.authenticationEntryPoint(entryPoint))
         .authorizeHttpRequests(auth -> auth
             // "/swagger-ui/**" only matches paths with a slash after "swagger-ui" —
             // it does NOT match the actual entry URL springdoc serves,

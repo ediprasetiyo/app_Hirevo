@@ -17,6 +17,7 @@ const SERVICE_URLS: Record<string, string> = {
   employee: process.env.NEXT_PUBLIC_EMPLOYEE_API_URL ?? 'http://localhost:8082/v1',
   attendance: process.env.NEXT_PUBLIC_ATTENDANCE_API_URL ?? 'http://localhost:8083/v1',
   leave: process.env.NEXT_PUBLIC_LEAVE_API_URL ?? 'http://localhost:8084/v1',
+  payroll: process.env.NEXT_PUBLIC_PAYROLL_API_URL ?? 'http://localhost:8085/v1',
 };
 
 const TENANT_SUBDOMAIN = process.env.NEXT_PUBLIC_DEFAULT_TENANT_SUBDOMAIN ?? 'acme';
@@ -313,6 +314,86 @@ export interface CreateLeaveRequestPayload {
   reason?: string;
 }
 
+export interface SalaryComponent {
+  id: string;
+  code: string;
+  name: string;
+  category: string;
+  type: string;
+  defaultAmount: number;
+  taxable: boolean;
+  bpjsKesBase: boolean;
+  bpjsTkBase: boolean;
+}
+
+export interface SalaryStructureEntry {
+  id: string;
+  employeeId: string;
+  salaryComponentId: string;
+  salaryComponentName: string | null;
+  category: string | null;
+  amount: number;
+  effectiveFrom: string;
+  effectiveTo: string | null;
+}
+
+export interface CreateSalaryStructurePayload {
+  employeeId: string;
+  salaryComponentId: string;
+  amount: number;
+  effectiveFrom: string;
+  reason?: string;
+}
+
+export interface PayrollPeriod {
+  id: string;
+  name: string;
+  periodYear: number;
+  periodMonth: number;
+  startDate: string;
+  endDate: string;
+  cutoffDate: string;
+  payDate: string;
+  type: string;
+  status: string;
+}
+
+export interface PayrollRun {
+  id: string;
+  payrollPeriodId: string;
+  periodName: string | null;
+  runNo: string | null;
+  status: string;
+  totalEmployees: number | null;
+  totalGross: number | null;
+  totalDeductions: number | null;
+  totalPph21: number | null;
+  totalBpjsEmployee: number | null;
+  totalBpjsEmployer: number | null;
+  totalNet: number | null;
+  calculatedAt: string | null;
+  approvedAt: string | null;
+  paidAt: string | null;
+}
+
+export interface Payslip {
+  id: string;
+  payrollRunId: string;
+  employeeId: string;
+  employeeName: string | null;
+  grossAmount: number;
+  taxableAmount: number;
+  pph21Amount: number;
+  bpjsEmployee: number;
+  bpjsEmployer: number;
+  otherDeductions: number;
+  netAmount: number;
+  ptkpCode: string | null;
+  terCategory: string | null;
+  calculationSnapshot: string | null;
+  createdAt: string;
+}
+
 export const api = {
   login: (email: string, password: string) =>
     request<LoginResponse>('iam', '/auth/login', {
@@ -409,6 +490,45 @@ export const api = {
 
   rejectLeaveRequest: (id: string) =>
     request<LeaveRequestEntry>('leave', `/leave-requests/${id}/reject`, { method: 'POST' }),
+
+  listSalaryComponents: () => request<SalaryComponent[]>('payroll', '/salary-components'),
+
+  listSalaryStructures: (employeeId: string) =>
+    request<SalaryStructureEntry[]>('payroll', `/salary-structures?employeeId=${employeeId}`),
+
+  assignSalaryStructure: (payload: CreateSalaryStructurePayload) =>
+    request<SalaryStructureEntry>('payroll', '/salary-structures', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  listPayrollPeriods: () => request<PayrollPeriod[]>('payroll', '/payroll-periods'),
+
+  createPayrollPeriod: (year: number, month: number) =>
+    request<PayrollPeriod>('payroll', '/payroll-periods', {
+      method: 'POST',
+      body: JSON.stringify({ year, month }),
+    }),
+
+  listPayrollRuns: () => request<PayrollRun[]>('payroll', '/payroll-runs'),
+
+  createPayrollRun: (payrollPeriodId: string) =>
+    request<PayrollRun>('payroll', '/payroll-runs', {
+      method: 'POST',
+      body: JSON.stringify({ payrollPeriodId }),
+    }),
+
+  calculatePayrollRun: (id: string) =>
+    request<PayrollRun>('payroll', `/payroll-runs/${id}/calculate`, { method: 'POST' }),
+
+  approvePayrollRun: (id: string) =>
+    request<PayrollRun>('payroll', `/payroll-runs/${id}/approve`, { method: 'POST' }),
+
+  markPayrollRunPaid: (id: string) =>
+    request<PayrollRun>('payroll', `/payroll-runs/${id}/mark-paid`, { method: 'POST' }),
+
+  listRunPayslips: (runId: string) =>
+    request<Payslip[]>('payroll', `/payroll-runs/${runId}/payslips`),
 };
 
 export const isMockMode = MOCK_MODE;
