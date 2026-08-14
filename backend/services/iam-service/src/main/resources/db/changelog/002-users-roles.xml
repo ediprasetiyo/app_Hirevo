@@ -77,14 +77,23 @@
   </changeSet>
 
   <changeSet id="002-user-roles" author="hirevo">
+    <!--
+      scope_branch_id is NOT NULL with a zero-UUID sentinel for "no branch scope"
+      instead of a nullable column, because PostgreSQL does not allow expressions
+      (e.g. COALESCE) inside a PRIMARY KEY constraint — only plain column lists.
+      A sentinel default keeps the composite PK a straightforward column list
+      while still letting "global" role assignments (no branch restriction) work.
+    -->
     <createTable tableName="user_roles" schemaName="iam">
       <column name="user_id" type="uuid"><constraints nullable="false"/></column>
       <column name="role_id" type="uuid"><constraints nullable="false"/></column>
-      <column name="scope_branch_id" type="uuid"/>
+      <column name="scope_branch_id" type="uuid" defaultValue="00000000-0000-0000-0000-000000000000">
+        <constraints nullable="false"/>
+      </column>
       <column name="assigned_at" type="timestamptz" defaultValueComputed="now()"><constraints nullable="false"/></column>
     </createTable>
-    <sql>ALTER TABLE iam.user_roles ADD CONSTRAINT pk_user_roles
-         PRIMARY KEY (user_id, role_id, COALESCE(scope_branch_id,'00000000-0000-0000-0000-000000000000'));</sql>
+    <addPrimaryKey schemaName="iam" tableName="user_roles"
+        columnNames="user_id, role_id, scope_branch_id" constraintName="pk_user_roles"/>
     <addForeignKeyConstraint baseTableSchemaName="iam" baseTableName="user_roles"
         baseColumnNames="user_id"
         referencedTableSchemaName="iam" referencedTableName="users"
