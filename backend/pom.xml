@@ -42,6 +42,7 @@
     <module>services/attendance-service</module>
     <module>services/leave-service</module>
     <module>services/payroll-service</module>
+    <module>services/reimbursement-service</module>
     <!-- Other services scaffold-only for now; uncomment as built -->
     <!--
     <module>services/tenant-service</module>
