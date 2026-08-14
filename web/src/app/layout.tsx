@@ -26,7 +26,13 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="id" className={inter.variable}>
+    // suppressHydrationWarning here is scoped to this element's own attributes
+    // only (not its subtree) — it's the documented React pattern for DOM
+    // mutations outside app control, e.g. browser extensions (Katalon
+    // Recorder, Grammarly, dark-reader, etc.) that inject attributes onto
+    // <html> before React hydrates. It does NOT hide real hydration bugs
+    // inside the actual page content.
+    <html lang="id" className={inter.variable} suppressHydrationWarning>
       <body>{children}</body>
     </html>
   );
